@@ -64,6 +64,12 @@ public final class DownloadedSound extends AbstractSoundInstance {
         return instance;
     }
 
+    public static DownloadedSound personal(byte[] audio, double offsetSeconds, Consumer<String> onError) {
+        var instance = new DownloadedSound(() -> new java.io.ByteArrayInputStream(audio), onError);
+        instance.offsetSeconds = Math.max(0, offsetSeconds);
+        return instance;
+    }
+
     @Override
     public WeighedSoundEvents getOrResolve(SoundManager manager) {
         return soundEvent;

@@ -27,6 +27,12 @@ public final class OnlineJukebox {
         boolean supports(ServerPlayer player);
         void send(ServerPlayer player, JukeboxAudioPayload packet);
     }
+    public interface PersonalSource {
+        ItemStack disc();
+        boolean isActive();
+        void save();
+        void stop();
+    }
     private static OnlineJukebox active;
     private final Downloads downloads;
     private final Transport transport;
@@ -62,6 +68,32 @@ public final class OnlineJukebox {
         return true;
     }
 
+    public static boolean tryPlayPersonal(ServerPlayer player, PersonalSource source) {
+        return active != null && active.playPersonal(player, source);
+    }
+
+    public boolean playPersonal(ServerPlayer player, PersonalSource source) {
+        var old = sessions.values().iterator();
+        while (old.hasNext()) {
+            var session = old.next();
+            if (session.personal != null && session.owner.equals(player.getUUID())) {
+                stopListeners(session);
+                old.remove();
+            }
+        }
+        if (sessions.size() >= 8 || !transport.supports(player) || source.disc().getCustomName() == null) {
+            source.stop();
+            player.sendOverlayMessage(Component.literal("Cannot start backpack music: session limit or incompatible Mysix client."));
+            return false;
+        }
+        var session = new Session((ServerLevel) player.level(), player.blockPosition(), source.disc(), player.getUUID());
+        session.personal = source;
+        session.personalPlayer = player;
+        sessions.put(session.id, session);
+        load(session, player, source.disc().getCustomName().getString());
+        return true;
+    }
+
     public void insert(ServerPlayer player, ServerLevel level, BlockPos pos, ItemStack held) {
         if (!(level.getBlockEntity(pos) instanceof JukeboxBlockEntity box)
                 || !box.getTheItem().isEmpty() || held.isEmpty()) return;
@@ -75,9 +107,13 @@ public final class OnlineJukebox {
         String query = disc.getCustomName().getString();
         var session = new Session(level, pos.immutable(), disc, player.getUUID());
         sessions.put(session.id, session);
+        load(session, player, query);
+    }
+
+    private void load(Session session, ServerPlayer player, String query) {
         player.sendOverlayMessage(Component.literal("Finding music: " + query));
-        var server = level.getServer();
-        String request = CdRecording.pinnedId(disc)
+        var server = session.level.getServer();
+        String request = CdRecording.pinnedId(session.disc)
                 .map(id -> "https://www.youtube.com/watch?v=" + id).orElse(query);
         downloads.load(request, result -> {
             try {
@@ -91,8 +127,9 @@ public final class OnlineJukebox {
                     session.result = result;
                     session.audio = audio;
                     CdRecording.remember(session.disc, query, result.videoId());
-                    session.level.getBlockEntity(session.pos).setChanged();
-                    session.startTick = level.getGameTime() + 20;
+                    if (session.personal != null) session.personal.save();
+                    else session.level.getBlockEntity(session.pos).setChanged();
+                    session.startTick = session.level.getGameTime() + 20;
                     player.sendOverlayMessage(Component.literal("Playing: " + result.title()
                             + ". Wrong recording? Rename the CD to a YouTube link."));
                 });
@@ -103,6 +140,8 @@ public final class OnlineJukebox {
     }
 
     private boolean stillInserted(Session session) {
+        if (session.personal != null) return session.level.getServer().getPlayerList().getPlayer(session.owner)
+                == session.personalPlayer && session.personal.isActive();
         return session.level.hasChunkAt(session.pos)
                 && session.level.getBlockEntity(session.pos) instanceof JukeboxBlockEntity box
                 && box.getTheItem() == session.disc;
@@ -112,7 +151,8 @@ public final class OnlineJukebox {
         if (sessions.remove(session.id) != session) return;
         stopListeners(session);
         if (stillInserted(session)) {
-            ((JukeboxBlockEntity) session.level.getBlockEntity(session.pos)).popOutTheItem();
+            if (session.personal != null) session.personal.stop();
+            else ((JukeboxBlockEntity) session.level.getBlockEntity(session.pos)).popOutTheItem();
             var player = session.level.getServer().getPlayerList().getPlayer(session.owner);
             if (player != null) player.sendOverlayMessage(Component.literal(
                     "Could not play CD. Try a YouTube link. " + error.getMessage()));
@@ -127,6 +167,7 @@ public final class OnlineJukebox {
             var session = iterator.next();
             if (!stillInserted(session)) {
                 stopListeners(session);
+                if (session.personal != null) session.personal.stop();
                 iterator.remove();
                 continue;
             }
@@ -134,19 +175,22 @@ public final class OnlineJukebox {
             if (session.result.durationSeconds() > 0 && session.level.getGameTime() > session.startTick
                     + Math.ceil(session.result.durationSeconds() * 20)) {
                 stopListeners(session);
+                if (session.personal != null) session.personal.stop();
                 iterator.remove();
                 continue;
             }
             var nearby = new HashSet<UUID>();
             for (var player : server.getPlayerList().getPlayers()) {
-                if (player.level() != session.level || !session.pos.closerToCenterThan(player.position(), 64)
-                        || !transport.supports(player)) continue;
+                boolean audible = session.personal != null ? player.getUUID().equals(session.owner)
+                        : player.level() == session.level && session.pos.closerToCenterThan(player.position(), 64);
+                if (!audible || !transport.supports(player)) continue;
                 nearby.add(player.getUUID());
                 var listener = session.listeners.get(player.getUUID());
                 if (listener == null || listener.player != player) {
                     listener = new Listener(player);
                     session.listeners.put(player.getUUID(), listener);
-                    transport.send(player, packet(session, JukeboxAudioPayload.BEGIN, 0, new byte[0]));
+                    transport.send(player, packet(session, session.personal != null
+                            ? JukeboxAudioPayload.PERSONAL_BEGIN : JukeboxAudioPayload.BEGIN, 0, new byte[0]));
                 }
                 // At most 96 KiB/player/jukebox each tick; never one huge packet.
                 for (int count = 0; count < 4 && transferChunksLeft > 0
@@ -188,7 +232,10 @@ public final class OnlineJukebox {
     }
 
     public void clear() {
-        for (var session : sessions.values()) stopListeners(session);
+        for (var session : sessions.values()) {
+            stopListeners(session);
+            if (session.personal != null) session.personal.stop();
+        }
         sessions.clear();
     }
 
@@ -208,6 +255,8 @@ public final class OnlineJukebox {
         DownloadResult result;
         byte[] audio;
         long startTick;
+        PersonalSource personal;
+        ServerPlayer personalPlayer;
         Session(ServerLevel level, BlockPos pos, ItemStack disc, UUID owner) {
             this.level = level; this.pos = pos; this.disc = disc; this.owner = owner;
         }

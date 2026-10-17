@@ -1,6 +1,7 @@
 # gradle
 
 .gradle/
+.fabric/
 build/
 out/
 classes/

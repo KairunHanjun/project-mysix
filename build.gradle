@@ -12,6 +12,15 @@ loom {
     }
 }
 
+repositories {
+    maven {
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+}
+
+configurations { backpackTestRuntime }
+
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
@@ -22,6 +31,13 @@ dependencies {
     testImplementation 'org.junit.platform:junit-platform-launcher'
     testImplementation 'org.mockito:mockito-core:5.20.0'
     testImplementation sourceSets.client.output
+    // Test fixtures only: neither mod is bundled or required by Mysix.
+    backpackTestRuntime 'maven.modrinth:travelersbackpack:SmhjfeWr'
+    backpackTestRuntime 'maven.modrinth:ohNO6lps:JpKvrr9J'
+    if (providers.gradleProperty('withBackpack').isPresent()) {
+        runtimeOnly 'maven.modrinth:travelersbackpack:SmhjfeWr'
+        runtimeOnly 'maven.modrinth:ohNO6lps:JpKvrr9J'
+    }
 }
 
 processResources {
@@ -37,7 +53,7 @@ java {
     withSourcesJar()
 }
 
-tasks.withType(Jar).configureEach { from('LICENSE') }
+tasks.withType(Jar).configureEach { from('LICENSE', 'THIRD_PARTY_NOTICES.md') }
 test { useJUnitPlatform { excludeTags 'network' } }
 
 tasks.register('serverTest', Test) {
@@ -49,11 +65,42 @@ tasks.register('serverTest', Test) {
     filter {
         includeTestsMatching '*OnlineJukeboxTest'
         includeTestsMatching '*AudioTransferTest'
+        includeTestsMatching '*BackpackPlaybackControllerTest'
     }
     systemProperty 'fabric.side', 'server'
 }
 
 check.dependsOn tasks.named('serverTest')
+
+tasks.register('backpackTest', Test) {
+    description = 'Tests optional hooks with the real Traveler\'s Backpack 11.4.1 Fabric 26.3 JAR.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath + configurations.backpackTestRuntime
+    useJUnitPlatform { excludeTags 'network' }
+    filter {
+        includeTestsMatching '*BackpackIntegrationTest'
+        includeTestsMatching '*BackpackPlaybackControllerTest'
+        includeTestsMatching '*OnlineJukeboxTest'
+    }
+    systemProperty 'mysix.backpackTests', 'true'
+}
+
+tasks.register('backpackServerTest', Test) {
+    description = 'Checks Backpack API and disc-slot hooks in the dedicated-server environment.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath + configurations.backpackTestRuntime
+    useJUnitPlatform { excludeTags 'network' }
+    filter {
+        includeTestsMatching '*BackpackIntegrationTest.supportedReleaseAndAllReflectedApiSignaturesMatch'
+        includeTestsMatching '*BackpackIntegrationTest.realTransformedBackpackSlotAcceptsMysixExternalCdAndRejectsUnrelatedItems'
+        includeTestsMatching '*BackpackPlaybackControllerTest'
+        includeTestsMatching '*OnlineJukeboxTest'
+    }
+    systemProperty 'mysix.backpackTests', 'true'
+    systemProperty 'fabric.side', 'server'
+}
 
 tasks.register('networkTest', Test) {
     description = 'Opt-in real yt-dlp downloads; requires yt-dlp, Deno and network access.'

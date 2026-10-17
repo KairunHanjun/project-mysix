@@ -114,6 +114,19 @@ class LocalPlaybackTest {
     }
 
     @Test
+    void personalBackpackAudioStaysRelativeToWearerAndDecodesReceivedBytes() throws Exception {
+        var sound = DownloadedSound.personal(Files.readAllBytes(audio("aaaaaaaaaaa")), 0,
+                message -> fail(message));
+        assertTrue(sound.isRelative());
+        assertEquals(net.minecraft.client.resources.sounds.SoundInstance.Attenuation.NONE, sound.getAttenuation());
+        assertEquals(SoundSource.RECORDS, sound.getSource());
+        assertNotNull(sound.getOrResolve(null));
+        try (var stream = sound.getAudioStream(null, null, false).get(10, TimeUnit.SECONDS)) {
+            assertTrue(stream.read(4096).hasRemaining());
+        }
+    }
+
+    @Test
     void decoderReportsMissingFilesAsFailures() {
         var error = new AtomicReference<String>();
         var sound = new DownloadedSound(directory.resolve("missing.ogg"), error::set);

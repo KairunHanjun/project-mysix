@@ -1,0 +1,9 @@
+{
+  "required": false,
+  "package": "me.simonhamour.mysix.compat.mixin",
+  "plugin": "me.simonhamour.mysix.compat.mixin.BackpackMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": ["BackpackDiscSlotMixin"],
+  "client": ["BackpackWidgetMixin"],
+  "injectors": {"defaultRequire": 1}
+}

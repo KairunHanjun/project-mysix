@@ -14,9 +14,10 @@ public record JukeboxAudioPayload(UUID session, int kind, Identifier dimension, 
         String videoId, String title, int totalBytes, long startTick, int offset, byte[] data)
         implements CustomPacketPayload {
     public static final int BEGIN = 0, CHUNK = 1, PLAY = 2, STOP = 3;
+    public static final int PERSONAL_BEGIN = 4;
     public static final int CHUNK_BYTES = 24 * 1024;
     public static final int MAX_BYTES = 30 * 1024 * 1024;
-    public static final Type<JukeboxAudioPayload> TYPE = new Type<>(Mysix.id("jukebox_audio"));
+    public static final Type<JukeboxAudioPayload> TYPE = new Type<>(Mysix.id("jukebox_audio_v2"));
     public static final StreamCodec<RegistryFriendlyByteBuf, JukeboxAudioPayload> CODEC = StreamCodec.of(
             (buf, value) -> {
                 buf.writeUUID(value.session());
@@ -34,7 +35,7 @@ public record JukeboxAudioPayload(UUID session, int kind, Identifier dimension, 
                     buf.readLong(), buf.readVarInt(), buf.readByteArray(CHUNK_BYTES)));
 
     public JukeboxAudioPayload {
-        if (kind < BEGIN || kind > STOP || totalBytes < 0 || totalBytes > MAX_BYTES
+        if (kind < BEGIN || kind > PERSONAL_BEGIN || totalBytes < 0 || totalBytes > MAX_BYTES
                 || offset < 0 || offset > totalBytes || data.length > CHUNK_BYTES
                 || data.length > totalBytes - offset || title.length() > 200
                 || !videoId.matches("[A-Za-z0-9_-]{11}")) {

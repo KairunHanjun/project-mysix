@@ -28,8 +28,8 @@ public final class JukeboxPlayback {
             while (iterator.hasNext()) {
                 var session = iterator.next();
                 if (client.level == null || client.player == null
-                        || !client.level.dimension().identifier().equals(session.begin.dimension())
-                        || !session.begin.pos().closerToCenterThan(client.player.position(), 64)) {
+                        || (!session.personal() && (!client.level.dimension().identifier().equals(session.begin.dimension())
+                        || !session.begin.pos().closerToCenterThan(client.player.position(), 64)))) {
                     stop(client, session);
                     iterator.remove();
                 }
@@ -43,9 +43,12 @@ public final class JukeboxPlayback {
             if (session != null) stop(client, session);
             return;
         }
-        if (client.level == null || !client.level.dimension().identifier().equals(packet.dimension())) return;
+        if (client.level == null) return;
+        var existing = sessions.get(packet.session());
+        if (packet.kind() != JukeboxAudioPayload.PERSONAL_BEGIN && (existing == null || !existing.personal())
+                && !client.level.dimension().identifier().equals(packet.dimension())) return;
         try {
-            if (packet.kind() == JukeboxAudioPayload.BEGIN) {
+            if (packet.kind() == JukeboxAudioPayload.BEGIN || packet.kind() == JukeboxAudioPayload.PERSONAL_BEGIN) {
                 var previous = sessions.remove(packet.session());
                 if (previous != null) stop(client, previous);
                 if (sessions.size() >= 8) throw new IllegalStateException("Too many active jukeboxes");
@@ -59,8 +62,9 @@ public final class JukeboxPlayback {
             } else if (packet.kind() == JukeboxAudioPayload.PLAY) {
                 var audio = session.transfer.finish();
                 double elapsed = Math.max(0, client.level.getGameTime() - packet.startTick()) / 20.0;
-                var sound = DownloadedSound.jukebox(audio, packet.pos(), elapsed,
-                        message -> client.execute(() -> error(client, "Cannot decode CD: " + message)));
+                java.util.function.Consumer<String> onError = message -> client.execute(() -> error(client, "Cannot decode CD: " + message));
+                var sound = session.personal() ? DownloadedSound.personal(audio, elapsed, onError)
+                        : DownloadedSound.jukebox(audio, packet.pos(), elapsed, onError);
                 session.sound = sound;
                 if (client.getSoundManager().play(sound) == SoundEngine.PlayResult.NOT_STARTED) {
                     throw new IllegalStateException("CD audio could not start; check Jukebox/Note Blocks volume");
@@ -88,5 +92,6 @@ public final class JukeboxPlayback {
         Playback(JukeboxAudioPayload begin, AudioTransfer transfer) {
             this.begin = begin; this.transfer = transfer;
         }
+        boolean personal() { return begin.kind() == JukeboxAudioPayload.PERSONAL_BEGIN; }
     }
 }

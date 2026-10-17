@@ -1,3 +1,17 @@
+# Project Mysix 0.2.0 (unreleased)
+
+- Optional Traveler's Backpack Fabric 26.3-11.4.1 Jukebox Upgrade integration.
+- External Mysix CDs are accepted in the upgrade and use its play/stop controls.
+- Server-side downloads and the existing cache deliver music only to the wearer.
+- Stopping, removing the CD/upgrade/backpack, death, or logout cancels playback,
+  including downloads that finish after cancellation.
+- Resolved recording data is saved back into the backpack's stored CD.
+- Failed downloads stop the upgrade and preserve the CD in its slot.
+- Mysix runs without Backpack; unsupported Backpack versions disable the adapter.
+- Added real-mod hook tests and dedicated-server compatibility checks.
+- Updated audio protocol: use the same Mysix version on server and every client.
+- Full backpack GUI and live multiplayer checks remain pending.
+
 # Project Mysix 0.1.0
 
 First public prerelease for Minecraft Java 26.3 and Fabric. Requires Java 25,

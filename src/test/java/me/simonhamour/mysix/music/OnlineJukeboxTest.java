@@ -77,6 +77,7 @@ class OnlineJukeboxTest {
                 when(player.getUUID()).thenReturn(UUID.randomUUID());
                 when(player.level()).thenReturn(level);
                 when(player.position()).thenReturn(new Vec3(1, 1, 1));
+                when(player.blockPosition()).thenReturn(BlockPos.ZERO);
             }
             when(playerList.getPlayer(owner.getUUID())).thenReturn(owner);
             var state = new AtomicReference<>(Blocks.JUKEBOX.defaultBlockState());
@@ -187,5 +188,65 @@ class OnlineJukeboxTest {
             f.time.set(20); f.online.tick(f.server);
             assertTrue(f.sent.isEmpty());
         }
+    }
+
+    private static final class Personal implements OnlineJukebox.PersonalSource {
+        final ItemStack disc;
+        boolean active = true;
+        int saves;
+        Personal(ItemStack disc) { this.disc = disc; }
+        public ItemStack disc() { return disc; }
+        public boolean isActive() { return active; }
+        public void save() { saves++; }
+        public void stop() { active = false; }
+    }
+
+    @Test void backpackTransfersOnlyToWearerAndStoppingDoesNotDropOrConsumeCd() throws Exception {
+        var f = new Fixture(); var source = new Personal(f.held);
+        assertTrue(f.online.playPersonal(f.owner, source));
+        f.complete(new byte[]{1, 2, 3}); f.time.set(20); f.online.tick(f.server);
+        assertEquals(JukeboxAudioPayload.PERSONAL_BEGIN, f.packets(f.owner).getFirst().kind());
+        assertEquals(JukeboxAudioPayload.PLAY, f.packets(f.owner).getLast().kind());
+        assertTrue(f.packets(f.friend).isEmpty());
+        assertEquals(1, source.saves);
+        assertEquals("Yikl044w8d0", CdRecording.pinnedId(source.disc).orElseThrow());
+        assertEquals(1, f.held.getCount());
+        source.active = false; f.online.tick(f.server);
+        assertEquals(JukeboxAudioPayload.STOP, f.packets(f.owner).getLast().kind());
+        verify(f.level, never()).addFreshEntity(any(Entity.class));
+    }
+
+    @Test void backpackDownloadFailureResetsPlayFlagAndPreservesCd() {
+        var f = new Fixture(); var source = new Personal(f.held);
+        f.online.playPersonal(f.owner, source);
+        f.failure.accept(new java.io.IOException("Download unavailable"));
+        assertFalse(source.active); assertEquals(1, f.held.getCount());
+        assertTrue(f.sent.isEmpty()); verify(f.owner, times(2)).sendOverlayMessage(any(Component.class));
+        verify(f.level, never()).addFreshEntity(any(Entity.class));
+    }
+
+    @Test void stoppingBackpackDuringLookupCancelsLateResult() throws Exception {
+        var f = new Fixture(); var source = new Personal(f.held);
+        f.online.playPersonal(f.owner, source);
+        source.active = false; f.online.tick(f.server);
+        f.complete(new byte[]{1, 2, 3}); f.time.set(20); f.online.tick(f.server);
+        assertTrue(f.sent.isEmpty()); assertEquals(0, source.saves);
+    }
+
+    @Test void completedBackpackTrackClearsPlayingFlag() throws Exception {
+        var f = new Fixture(); var source = new Personal(f.held);
+        f.online.playPersonal(f.owner, source); f.complete(new byte[]{1, 2, 3});
+        f.time.set(20); f.online.tick(f.server); f.time.set(221); f.online.tick(f.server);
+        assertFalse(source.active);
+        assertEquals(JukeboxAudioPayload.STOP, f.packets(f.owner).getLast().kind());
+    }
+
+    @Test void disconnectDuringBackpackDownloadCannotRetainSessionOrStartLatePlayback() throws Exception {
+        var f = new Fixture(); var source = new Personal(f.held);
+        f.online.playPersonal(f.owner, source);
+        when(f.server.getPlayerList().getPlayer(f.owner.getUUID())).thenReturn(null);
+        f.online.tick(f.server); f.complete(new byte[]{1, 2, 3});
+        f.time.set(20); f.online.tick(f.server); assertTrue(f.sent.isEmpty());
+        assertFalse(source.active);
     }
 }
