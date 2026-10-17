@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_dye": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:orange_dye"
+          }
+        ]
+      }
+    },
+    "has_recipe": {
+      "trigger": "minecraft:recipe_unlocked",
+      "conditions": {
+        "recipes": "mysix:orange_cd"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_dye",
+      "has_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "mysix:orange_cd"
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+allprojects {
+    afterEvaluate {
+        tasks.register('writeIdeTestClasspath') {
+            def runtimeClasspath = sourceSets.test.runtimeClasspath
+            def destination = layout.buildDirectory.file('ide-runner-check/classpath.txt')
+            inputs.files(runtimeClasspath)
+            outputs.file(destination)
+            dependsOn tasks.named('testClasses')
+            doLast {
+                def output = destination.get().asFile
+                output.parentFile.mkdirs()
+                output.text = runtimeClasspath.asPath
+            }
+        }
+    }
+}

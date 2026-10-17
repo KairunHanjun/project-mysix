@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "mysix",
+  "version": "${version}",
+  "name": "Project Mysix",
+  "description": "Craftable colored CDs. Foundation for a multiplayer streaming jukebox mod.",
+  "authors": [
+    "SimonHamour"
+  ],
+  "license": "CC0-1.0",
+  "contact": {
+    "homepage": "https://github.com/KairunHanjun/project-mysix",
+    "sources": "https://github.com/KairunHanjun/project-mysix",
+    "issues": "https://github.com/KairunHanjun/project-mysix/issues"
+  },
+  "environment": "*",
+  "mixins": ["mysix.mixins.json"],
+  "entrypoints": {
+    "main": [
+      "me.simonhamour.mysix.Mysix"
+    ],
+    "client": ["me.simonhamour.mysix.client.MysixClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "required": true,
+  "package": "me.simonhamour.mysix.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": ["AnvilMenuMixin"],
+  "injectors": {"defaultRequire": 1}
+}

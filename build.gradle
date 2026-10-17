@@ -1,0 +1,67 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+loom {
+    splitEnvironmentSourceSets()
+    mods {
+        "mysix" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation 'net.fabricmc.fabric-api:fabric-api:0.162.0+26.3'
+    testImplementation platform('org.junit:junit-bom:5.13.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    // Our test-only session listener supports IDE runners opening multiple sessions.
+    testImplementation 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.mockito:mockito-core:5.20.0'
+    testImplementation sourceSets.client.output
+}
+
+processResources {
+    def modVersion = project.version
+    inputs.property 'version', modVersion
+    filesMatching('fabric.mod.json') { expand 'version': modVersion }
+}
+
+tasks.withType(JavaCompile).configureEach { options.release = 25 }
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+    withSourcesJar()
+}
+
+tasks.withType(Jar).configureEach { from('LICENSE') }
+test { useJUnitPlatform { excludeTags 'network' } }
+
+tasks.register('serverTest', Test) {
+    description = 'Runs jukebox lifecycle and packet tests with Fabric in dedicated-server mode.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { excludeTags 'network' }
+    filter {
+        includeTestsMatching '*OnlineJukeboxTest'
+        includeTestsMatching '*AudioTransferTest'
+    }
+    systemProperty 'fabric.side', 'server'
+}
+
+check.dependsOn tasks.named('serverTest')
+
+tasks.register('networkTest', Test) {
+    description = 'Opt-in real yt-dlp downloads; requires yt-dlp, Deno and network access.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { includeTags 'network' }
+    systemProperty 'mysix.networkTests', 'true'
+    systemProperty 'mysix.integration.directory', layout.buildDirectory.dir('integration-downloads').get().asFile.absolutePath
+    testLogging { showStandardStreams = true }
+}

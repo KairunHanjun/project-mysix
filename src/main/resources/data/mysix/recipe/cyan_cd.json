@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "mysix_cds",
+  "pattern": [
+    "PPP",
+    "PRP",
+    "PDP"
+  ],
+  "key": {
+    "P": "minecraft:glass_pane",
+    "R": "minecraft:redstone",
+    "D": "minecraft:cyan_dye"
+  },
+  "result": {
+    "id": "mysix:cyan_cd",
+    "count": 1
+  }
+}

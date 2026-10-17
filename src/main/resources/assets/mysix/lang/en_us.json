@@ -1,0 +1,19 @@
+{
+  "item.mysix.white_cd": "White CD",
+  "item.mysix.orange_cd": "Orange CD",
+  "item.mysix.magenta_cd": "Magenta CD",
+  "item.mysix.light_blue_cd": "Light Blue CD",
+  "item.mysix.yellow_cd": "Yellow CD",
+  "item.mysix.lime_cd": "Lime CD",
+  "item.mysix.pink_cd": "Pink CD",
+  "item.mysix.gray_cd": "Gray CD",
+  "item.mysix.light_gray_cd": "Light Gray CD",
+  "item.mysix.cyan_cd": "Cyan CD",
+  "item.mysix.purple_cd": "Purple CD",
+  "item.mysix.blue_cd": "Blue CD",
+  "item.mysix.brown_cd": "Brown CD",
+  "item.mysix.green_cd": "Green CD",
+  "item.mysix.red_cd": "Red CD",
+  "item.mysix.black_cd": "Black CD",
+  "message.mysix.unknown_song": "No vanilla song matches %s. Try C418 - Cat or Lena Raine - Pigstep."
+}
