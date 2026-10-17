@@ -19,7 +19,7 @@ repositories {
     }
 }
 
-configurations { backpackTestRuntime; additionsTestRuntime; sculkTestRuntime }
+configurations { backpackTestRuntime; additionsTestRuntime; sculkTestRuntime; visualTestRuntime }
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
@@ -38,6 +38,12 @@ dependencies {
     sculkTestRuntime 'maven.modrinth:sculk-radio:QvRrQhHR'
     // Sculk Radio's stream graph uses kotlin.Pair even without Fzzy Config installed.
     sculkTestRuntime 'maven.modrinth:fabric-language-kotlin:SKW1BTL3'
+    visualTestRuntime 'maven.modrinth:visual-jukebox:xVrtCInL'
+    visualTestRuntime 'maven.modrinth:polymer:G0fTdl8M'
+    if (providers.gradleProperty('withVisualJukebox').isPresent()) {
+        runtimeOnly 'maven.modrinth:visual-jukebox:xVrtCInL'
+        runtimeOnly 'maven.modrinth:polymer:G0fTdl8M'
+    }
     if (providers.gradleProperty('withSculkRadio').isPresent()) {
         runtimeOnly 'maven.modrinth:sculk-radio:QvRrQhHR'
         runtimeOnly 'maven.modrinth:fabric-language-kotlin:SKW1BTL3'
@@ -48,6 +54,34 @@ dependencies {
     if (providers.gradleProperty('withBackpack').isPresent()) {
         runtimeOnly 'maven.modrinth:travelersbackpack:SmhjfeWr'
         runtimeOnly 'maven.modrinth:ohNO6lps:JpKvrr9J'
+    }
+}
+
+['visualTest': 'client', 'visualServerTest': 'server', 'visualCombinedTest': 'client'].each { taskName, side ->
+    tasks.register(taskName, Test) {
+        description = 'Tests Visual Jukebox 1.2.0+26.3 presentation hooks with Polymer.'
+        group = 'verification'
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath + configurations.visualTestRuntime
+        if (taskName == 'visualCombinedTest') {
+            classpath += configurations.backpackTestRuntime + configurations.additionsTestRuntime + configurations.sculkTestRuntime
+        }
+        useJUnitPlatform { excludeTags 'network' }
+        filter {
+            includeTestsMatching '*VisualJukeboxIntegrationTest'
+            if (taskName == 'visualCombinedTest') {
+                includeTestsMatching '*SculkRadioIntegrationTest'
+                includeTestsMatching '*AdditionsIntegrationTest.releaseAndApiSignaturesMatch'
+                includeTestsMatching '*BackpackIntegrationTest.supportedReleaseAndAllReflectedApiSignaturesMatch'
+            }
+        }
+        systemProperty 'fabric.side', side
+        systemProperty 'mysix.visualTests', 'true'
+        if (taskName == 'visualCombinedTest') {
+            systemProperty 'mysix.backpackTests', 'true'
+            systemProperty 'mysix.additionsTests', 'true'
+            systemProperty 'mysix.sculkTests', 'true'
+        }
     }
 }
 

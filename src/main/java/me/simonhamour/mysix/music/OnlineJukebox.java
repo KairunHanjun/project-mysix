@@ -88,6 +88,23 @@ public final class OnlineJukebox {
         return true;
     }
 
+    /** Server-side presentation state; never starts a vanilla song to animate an external CD. */
+    public static boolean isPlayingAt(JukeboxBlockEntity box) {
+        return active != null && active.playingAt(box);
+    }
+
+    public boolean playingAt(JukeboxBlockEntity box) {
+        if (!(box.getLevel() instanceof ServerLevel level)) return false;
+        long now = level.getGameTime();
+        return sessions.values().stream().anyMatch(session -> session.level == level
+                && session.pos.equals(box.getBlockPos())
+                && (session.personal == null || !session.personal.personal())
+                && session.audio != null && now >= session.startTick
+                && (session.result.durationSeconds() <= 0
+                    || now <= session.startTick + Math.ceil(session.result.durationSeconds() * 20))
+                && stillInserted(session));
+    }
+
     public static boolean tryPlayPersonal(ServerPlayer player, PersonalSource source) {
         return active != null && active.playPersonal(player, source);
     }

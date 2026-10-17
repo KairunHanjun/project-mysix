@@ -1,0 +1,8 @@
+{
+  "required": false,
+  "package": "me.simonhamour.mysix.compat.mixin",
+  "plugin": "me.simonhamour.mysix.compat.mixin.VisualMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": ["VisualJukeboxHolderMixin"],
+  "injectors": {"defaultRequire": 1}
+}

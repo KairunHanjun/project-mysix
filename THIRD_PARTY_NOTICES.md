@@ -29,3 +29,12 @@ written optional adapter and does not include Sculk Radio code, assets, or JAR.
 Install Sculk Radio 1.0.0+26.3 and Fabric Language Kotlin separately. Their official
 artifacts are used only for optional tests or an explicitly enabled development
 launch. This integration is not an endorsement by or affiliation with its author.
+
+Visual Jukebox is developed by tomalbrc and contributors and published under
+LGPL-3.0: https://github.com/tomalbrc/VisualJukebox
+Polymer is developed by Patbox and contributors: https://github.com/Patbox/polymer
+Mysix's independently written hooks target Visual Jukebox 1.2.0+26.3, tested with
+Polymer 0.18.4+26.3. Install these mods separately. Their code, assets, and JARs
+are not included in Mysix's distributable JAR; official artifacts are used only
+for optional tests and explicitly enabled development launches. This integration
+is not an endorsement by or affiliation with their authors.

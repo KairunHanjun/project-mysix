@@ -148,6 +148,17 @@ class OnlineJukeboxTest {
         assertEquals(20, packets.getLast().startTick(), "Moving between speakers must not restart the song");
     }
 
+    @Test void presentationStateWaitsForPlaybackAndEndsWithTrackOrEjection() throws Exception {
+        var f = new Fixture(); f.insert();
+        assertFalse(f.online.playingAt(f.box));
+        f.complete(new byte[]{1, 2, 3});
+        assertFalse(f.online.playingAt(f.box), "Do not animate during preparation");
+        f.time.set(20); assertTrue(f.online.playingAt(f.box));
+        assertFalse(f.box.getSongPlayer().isPlaying(), "Presentation must not start vanilla Cat");
+        f.time.set(221); assertFalse(f.online.playingAt(f.box));
+        f.time.set(20); f.box.popOutTheItem(); assertFalse(f.online.playingAt(f.box));
+    }
+
     @Test void twoPlayersReceiveIdenticalAudioAndRemovalStopsBoth() throws Exception {
         var f = new Fixture();
         f.insert();

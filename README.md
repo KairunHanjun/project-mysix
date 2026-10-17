@@ -18,6 +18,7 @@ A Fabric mod for **Minecraft Java 26.3** with vanilla music, YouTube song search
 - Optional **Traveler's Backpack 11.4.1** support: play Mysix CDs through the equipped backpack's Jukebox Upgrade, audible only to its wearer.
 - Optional **Additional Additions 10.0.14** support: Mysix CDs in Albums and the Pocket Jukebox, including mixed vanilla/external playlists.
 - Optional **Sculk Radio 1.0.0+26.3** support: route external CDs through connected speakers.
+- Optional **Visual Jukebox 1.2.0+26.3** support: display and animate external Mysix CDs.
 
 ## How to use
 
@@ -66,7 +67,7 @@ Development launch: `.\gradlew.bat runClient -PwithAdditions`. Add `-PwithBackpa
 3. Add cache cleanup that accounts for CDs being moved, stored, or destroyed.
 4. Validate optional integrations together in game. Sophisticated Backpacks porting is paused.
 
-Compatibility changes in 0.2.0–0.4.0 are currently unreleased; the public 0.1.0 prerelease supports vanilla jukebox blocks.
+Compatibility changes in 0.2.0–0.5.0 are currently unreleased; the public 0.1.0 prerelease supports vanilla jukebox blocks.
 
 ## Sculk Radio compatibility (0.4.0)
 
@@ -77,3 +78,9 @@ Each player hears the nearest connected, loaded speaker. Speaker changes and lat
 This adapter covers external audio routing; it does not synthesize jukebox redstone output or implement voice/microphone features. Unsupported Sculk Radio versions disable the adapter. Kotlin is needed by Sculk Radio's stream graph. In-game audio and live multiplayer checks remain pending.
 
 Development launch: `.\gradlew.bat runClient -PwithSculkRadio`. Combine with the other compatibility flags as needed.
+
+## Visual Jukebox compatibility (0.5.0)
+
+Install **Visual Jukebox 1.2.0+26.3** and **Polymer 0.18.4+26.3** alongside Mysix. The actual colored CD appears on the jukebox; animation follows external playback, waits during download, and stops when the song ends. Ejection removes the display. Both static insertion/ejection and spinning-disc modes are supported without starting extra vanilla audio.
+
+Development launch: `.\gradlew.bat runClient -PwithVisualJukebox`. Add `-PwithSculkRadio` to test radio routing alongside the display. Visual Jukebox defaults to static mode; for spinning discs, set `"static": false` in `run/config/visualjukebox.json` after the first launch and restart. Mysix's hook targets this exact Visual Jukebox release. Real-mod client/server tests cover display state and ejection; an in-game visual check remains pending.

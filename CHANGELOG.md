@@ -1,3 +1,12 @@
+# Project Mysix 0.5.0 (unreleased)
+
+- Optional Visual Jukebox 1.2.0+26.3 integration with Polymer 0.18.4+26.3.
+- External Mysix CDs use their actual item/color/name in the display.
+- Static and spinning modes follow Mysix playback without starting a vanilla song.
+- Download preparation is stopped presentation; completion/ejection ends animation.
+- Added released-mod client/server presentation tests and combined-mod hook checks.
+- In-game rendering and audible multiplayer checks remain pending.
+
 # Project Mysix 0.4.0 (unreleased)
 
 - Optional Sculk Radio 1.0.0+26.3 external-audio routing through its public stream API.
