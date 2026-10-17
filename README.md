@@ -16,6 +16,7 @@ A Fabric mod for **Minecraft Java 26.3** with vanilla music, YouTube song search
 - Ejects the CD and shows a hotbar error if downloading fails.
 - Works in survival. Removing the CD or breaking the jukebox stops playback.
 - Optional **Traveler's Backpack 11.4.1** support: play Mysix CDs through the equipped backpack's Jukebox Upgrade, audible only to its wearer.
+- Optional **Additional Additions 10.0.14** support: Mysix CDs in Albums and the Pocket Jukebox, including mixed vanilla/external playlists.
 
 ## How to use
 
@@ -49,11 +50,19 @@ Mysix also runs without Backpack installed. Only Backpack **11.4.1** is currentl
 
 For a development launch with Backpack and its dependency included, run `.\gradlew.bat runClient -PwithBackpack`.
 
+## Additional Additions compatibility (0.3.0)
+
+Install **Additional Additions Fabric 10.0.14 for 26.3** on client and server. Put renamed Mysix CDs in an Album, then insert it into a jukebox or Pocket Jukebox. A single Mysix CD also works in the Pocket Jukebox. Albums play tracks in their stored order; pocket playback is audible only to its holder. Removing the media stops playback. Resolved recordings stay on the nested CDs and reuse the server cache.
+
+On failure, a placed jukebox ejects the whole album; a Pocket Jukebox stops and keeps its contents. Reinsert to restart. External playlist tracks need a known duration. Other Additional Additions versions leave the adapter disabled. Real-mod client/server tests pass; audible playback, the full inventory UI, and live multiplayer still need an in-game check.
+
+Development launch: `.\gradlew.bat runClient -PwithAdditions`. Add `-PwithBackpack` to include both mods. Neither optional mod is bundled with Mysix.
+
 ## What's next
 
 1. Validate playback and synchronization with multiple players on a dedicated server.
 2. Improve first-playback speed and progress feedback.
 3. Add cache cleanup that accounts for CDs being moved, stored, or destroyed.
-4. Explore compatibility with **Additional Additions' Pocket Jukebox and Albums** and **Sculk Radio**, where matching versions are available.
+4. Explore **Sculk Radio** compatibility, where a matching version is available.
 
-Those integrations remain planned. External-audio playback currently supports vanilla jukebox blocks and the optional Backpack upgrade above.
+Compatibility changes in 0.2.0 and 0.3.0 are currently unreleased; the public 0.1.0 prerelease supports vanilla jukebox blocks.

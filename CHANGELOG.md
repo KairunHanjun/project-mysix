@@ -1,3 +1,17 @@
+# Project Mysix 0.3.0 (unreleased)
+
+- Optional Additional Additions Fabric 10.0.14 integration for Minecraft 26.3.
+- Mysix CDs work in Albums, placed jukeboxes holding Albums, and the Pocket Jukebox.
+- Mixed albums play external and vanilla tracks in stored order without skipping pending downloads.
+- Pocket playback uses the server cache and is audible only to its holder.
+- Resolved recording data persists inside album contents and pocket containers.
+- Removing media cancels playback and ignores late download results.
+- Failed placed-album tracks eject the whole album; pocket failures preserve stored media.
+- External playlist tracks without a known duration are rejected.
+- Added actual-mod client/server, serialization, failure, playlist, and combined Backpack integration tests.
+- Audio protocol v3 requires the same Mysix version on server and every client.
+- Full inventory UI, audible playback, and live multiplayer validation remain pending.
+
 # Project Mysix 0.2.0 (unreleased)
 
 - Optional Traveler's Backpack Fabric 26.3-11.4.1 Jukebox Upgrade integration.

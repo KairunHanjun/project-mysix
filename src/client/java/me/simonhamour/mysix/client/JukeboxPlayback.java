@@ -11,6 +11,10 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.sounds.SoundEngine;
 import net.minecraft.network.chat.Component;
+import net.minecraft.client.resources.sounds.SoundInstance;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.resources.Identifier;
+import net.minecraft.sounds.SoundSource;
 
 public final class JukeboxPlayback {
     private static final Map<UUID, Playback> sessions = new HashMap<>();
@@ -45,9 +49,20 @@ public final class JukeboxPlayback {
         }
         if (client.level == null) return;
         var existing = sessions.get(packet.session());
-        if (packet.kind() != JukeboxAudioPayload.PERSONAL_BEGIN && (existing == null || !existing.personal())
+        if (packet.kind() != JukeboxAudioPayload.PERSONAL_BEGIN && packet.kind() != JukeboxAudioPayload.PERSONAL_NATIVE
+                && (existing == null || !existing.personal())
                 && !client.level.dimension().identifier().equals(packet.dimension())) return;
         try {
+            if (packet.kind() == JukeboxAudioPayload.PERSONAL_NATIVE) {
+                var previous = sessions.remove(packet.session());
+                if (previous != null) stop(client, previous);
+                if (sessions.size() >= 8) throw new IllegalStateException("Too many active jukeboxes");
+                var playback = new Playback(packet, null);
+                playback.sound = personalNativeSound(packet.nativeSound());
+                sessions.put(packet.session(), playback);
+                client.getSoundManager().play(playback.sound);
+                return;
+            }
             if (packet.kind() == JukeboxAudioPayload.BEGIN || packet.kind() == JukeboxAudioPayload.PERSONAL_BEGIN) {
                 var previous = sessions.remove(packet.session());
                 if (previous != null) stop(client, previous);
@@ -85,13 +100,19 @@ public final class JukeboxPlayback {
         if (client.player != null) client.player.sendOverlayMessage(Component.literal(message));
     }
 
+    public static SimpleSoundInstance personalNativeSound(String id) {
+        return new SimpleSoundInstance(Identifier.parse(id), SoundSource.RECORDS, 1, 1,
+                SoundInstance.createUnseededRandom(), false, 0, SoundInstance.Attenuation.NONE, 0, 0, 0, true);
+    }
+
     private static final class Playback {
         final JukeboxAudioPayload begin;
         final AudioTransfer transfer;
-        DownloadedSound sound;
+        SoundInstance sound;
         Playback(JukeboxAudioPayload begin, AudioTransfer transfer) {
             this.begin = begin; this.transfer = transfer;
         }
-        boolean personal() { return begin.kind() == JukeboxAudioPayload.PERSONAL_BEGIN; }
+        boolean personal() { return begin.kind() == JukeboxAudioPayload.PERSONAL_BEGIN
+                || begin.kind() == JukeboxAudioPayload.PERSONAL_NATIVE; }
     }
 }

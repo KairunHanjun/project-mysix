@@ -43,6 +43,9 @@ class OnlineJukeboxTest {
         var lookup = net.minecraft.data.registries.VanillaRegistries.createWorldLookup();
         net.minecraft.core.registries.BuiltInRegistries.DATA_COMPONENT_INITIALIZERS.build(lookup)
                 .forEach(pending -> pending.apply());
+        ((net.minecraft.core.MappedRegistry<net.minecraft.world.item.Item>)
+                net.minecraft.core.registries.BuiltInRegistries.ITEM).bindAllTagsToEmpty();
+        me.simonhamour.mysix.testing.ItemTagBootstrap.refresh();
     }
 
     private record Sent(ServerPlayer player, JukeboxAudioPayload packet) {}
@@ -248,5 +251,39 @@ class OnlineJukeboxTest {
         f.online.tick(f.server); f.complete(new byte[]{1, 2, 3});
         f.time.set(20); f.online.tick(f.server); assertTrue(f.sent.isEmpty());
         assertFalse(source.active);
+    }
+
+    @Test void personalVanillaTrackUsesNativeSoundWithoutRunningDownloader() {
+        var f = new Fixture(); var source = new Personal(f.held);
+        var song = new net.minecraft.world.item.JukeboxSong(
+                net.minecraft.sounds.SoundEvents.MUSIC_DISC_CAT,
+                Component.literal("C418 - Cat"), 2, 1);
+        assertTrue(f.online.playPersonalSong(f.owner, source, song));
+        assertNull(f.success, "Native tracks must not call yt-dlp");
+        f.time.set(1); f.online.tick(f.server);
+        var packet = f.packets(f.owner).getFirst();
+        assertEquals(JukeboxAudioPayload.PERSONAL_NATIVE, packet.kind());
+        assertEquals("minecraft:music_disc.cat", packet.nativeSound());
+        assertTrue(f.packets(f.friend).isEmpty());
+        f.time.set(42); f.online.tick(f.server); assertFalse(source.active);
+        assertEquals(JukeboxAudioPayload.STOP, f.packets(f.owner).getLast().kind());
+    }
+
+    @Test void managedStationaryAlbumReachesNearbyPlayersWithoutFollowingOwner() throws Exception {
+        var f = new Fixture();
+        var source = new OnlineJukebox.PersonalSource() {
+            public ItemStack disc() { return f.held; }
+            public boolean isActive() { return true; }
+            public void save() {}
+            public void stop() {}
+            public boolean personal() { return false; }
+            public ServerLevel level(ServerPlayer owner) { return f.level; }
+            public BlockPos position(ServerPlayer owner) { return BlockPos.ZERO; }
+        };
+        f.online.playPersonal(f.owner, source); f.complete(new byte[]{1, 2, 3});
+        when(f.server.getPlayerList().getPlayer(f.owner.getUUID())).thenReturn(null);
+        f.time.set(20); f.online.tick(f.server);
+        assertEquals(JukeboxAudioPayload.BEGIN, f.packets(f.friend).getFirst().kind());
+        assertEquals(JukeboxAudioPayload.PLAY, f.packets(f.friend).getLast().kind());
     }
 }

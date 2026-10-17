@@ -16,6 +16,16 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class LocalPlaybackTest {
+    @Test
+    void vanillaPocketSoundUsesPersonalRecordsPlayback() {
+        var sound = me.simonhamour.mysix.client.JukeboxPlayback.personalNativeSound("minecraft:music_disc.cat");
+        assertEquals("minecraft:music_disc.cat", sound.getIdentifier().toString());
+        assertEquals(SoundSource.RECORDS, sound.getSource());
+        assertTrue(sound.isRelative());
+        assertFalse(sound.isLooping());
+        assertEquals(net.minecraft.client.resources.sounds.SoundInstance.Attenuation.NONE, sound.getAttenuation());
+    }
+
     @TempDir Path directory;
 
     private Path audio(String id) throws Exception {

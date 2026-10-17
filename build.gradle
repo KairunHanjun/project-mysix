@@ -19,7 +19,7 @@ repositories {
     }
 }
 
-configurations { backpackTestRuntime }
+configurations { backpackTestRuntime; additionsTestRuntime }
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
@@ -34,6 +34,10 @@ dependencies {
     // Test fixtures only: neither mod is bundled or required by Mysix.
     backpackTestRuntime 'maven.modrinth:travelersbackpack:SmhjfeWr'
     backpackTestRuntime 'maven.modrinth:ohNO6lps:JpKvrr9J'
+    additionsTestRuntime 'maven.modrinth:addadd:1RIHaXDM'
+    if (providers.gradleProperty('withAdditions').isPresent()) {
+        runtimeOnly 'maven.modrinth:addadd:1RIHaXDM'
+    }
     if (providers.gradleProperty('withBackpack').isPresent()) {
         runtimeOnly 'maven.modrinth:travelersbackpack:SmhjfeWr'
         runtimeOnly 'maven.modrinth:ohNO6lps:JpKvrr9J'
@@ -66,6 +70,7 @@ tasks.register('serverTest', Test) {
         includeTestsMatching '*OnlineJukeboxTest'
         includeTestsMatching '*AudioTransferTest'
         includeTestsMatching '*BackpackPlaybackControllerTest'
+        includeTestsMatching '*DiscPlaylistTest'
     }
     systemProperty 'fabric.side', 'server'
 }
@@ -111,4 +116,27 @@ tasks.register('networkTest', Test) {
     systemProperty 'mysix.networkTests', 'true'
     systemProperty 'mysix.integration.directory', layout.buildDirectory.dir('integration-downloads').get().asFile.absolutePath
     testLogging { showStandardStreams = true }
+}
+
+['additionsTest': 'client', 'additionsServerTest': 'server', 'combinedCompatTest': 'client'].each { taskName, side ->
+    tasks.register(taskName, Test) {
+        description = 'Tests Additional Additions 10.0.14 optional album and Pocket Jukebox hooks.'
+        group = 'verification'
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath + configurations.additionsTestRuntime
+        if (taskName == 'combinedCompatTest') classpath += configurations.backpackTestRuntime
+        useJUnitPlatform { excludeTags 'network' }
+        filter {
+            includeTestsMatching '*DiscPlaylistTest'
+            includeTestsMatching '*OnlineJukeboxTest'
+            includeTestsMatching '*AdditionsIntegrationTest'
+            if (taskName == 'combinedCompatTest') {
+                includeTestsMatching '*BackpackIntegrationTest'
+                includeTestsMatching '*BackpackPlaybackControllerTest'
+            }
+        }
+        systemProperty 'fabric.side', side
+        systemProperty 'mysix.additionsTests', 'true'
+        if (taskName == 'combinedCompatTest') systemProperty 'mysix.backpackTests', 'true'
+    }
 }

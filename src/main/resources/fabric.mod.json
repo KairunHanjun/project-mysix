@@ -14,7 +14,7 @@
     "issues": "https://github.com/KairunHanjun/project-mysix/issues"
   },
   "environment": "*",
-  "mixins": ["mysix.mixins.json", "mysix.travelers.mixins.json"],
+  "mixins": ["mysix.mixins.json", "mysix.travelers.mixins.json", "mysix.additions.mixins.json"],
   "entrypoints": {
     "main": [
       "me.simonhamour.mysix.Mysix"

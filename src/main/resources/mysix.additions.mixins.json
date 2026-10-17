@@ -1,0 +1,9 @@
+{
+  "required": false,
+  "package": "me.simonhamour.mysix.compat.mixin",
+  "plugin": "me.simonhamour.mysix.compat.mixin.AdditionsMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": ["AdditionsAlbumContentsMixin", "AdditionsAlbumTickMixin", "AdditionsPocketItemMixin"],
+  "client": ["AdditionsPocketPlayerMixin"],
+  "injectors": {"defaultRequire": 1}
+}

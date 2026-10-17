@@ -11,6 +11,25 @@ import org.junit.jupiter.api.Test;
 
 class AudioTransferTest {
     @Test
+    void vanillaPocketTrackRoundTripsWithoutTransferringAudio() {
+        var packet = new JukeboxAudioPayload(UUID.randomUUID(), JukeboxAudioPayload.PERSONAL_NATIVE,
+                Identifier.withDefaultNamespace("overworld"), BlockPos.ZERO, "aaaaaaaaaaa", "Cat",
+                0, 1L, 0, new byte[0], "minecraft:music_disc.cat");
+        var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
+        try {
+            JukeboxAudioPayload.CODEC.encode(buffer, packet);
+            var decoded = JukeboxAudioPayload.CODEC.decode(buffer);
+            assertEquals(JukeboxAudioPayload.PERSONAL_NATIVE, decoded.kind());
+            assertEquals("minecraft:music_disc.cat", decoded.nativeSound());
+            assertEquals(0, decoded.totalBytes());
+            assertEquals(0, decoded.data().length);
+        } finally { buffer.release(); }
+        assertThrows(IllegalArgumentException.class, () -> new JukeboxAudioPayload(packet.session(),
+                packet.kind(), packet.dimension(), packet.pos(), packet.videoId(), packet.title(),
+                0, 1L, 0, new byte[0], "invalid sound identifier"));
+    }
+
+    @Test
     void reassemblesExactBytesAndCannotPlayTwice() {
         var transfer = new AudioTransfer(5);
         transfer.append(0, new byte[]{1, 2});

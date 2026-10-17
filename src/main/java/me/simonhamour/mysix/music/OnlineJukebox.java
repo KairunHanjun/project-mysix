@@ -16,6 +16,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.JukeboxSong;
 import net.minecraft.world.level.block.entity.JukeboxBlockEntity;
 
 /** All mutable session state belongs to the server thread. Downloads alone run off-thread. */
@@ -32,6 +33,12 @@ public final class OnlineJukebox {
         boolean isActive();
         void save();
         void stop();
+        default boolean personal() { return true; }
+        default ServerLevel level(ServerPlayer player) { return (ServerLevel) player.level(); }
+        default BlockPos position(ServerPlayer player) { return player.blockPosition(); }
+        default void finished() { stop(); }
+        default void failed() { stop(); }
+        default boolean needsDuration() { return false; }
     }
     private static OnlineJukebox active;
     private final Downloads downloads;
@@ -72,26 +79,47 @@ public final class OnlineJukebox {
         return active != null && active.playPersonal(player, source);
     }
 
+    public static boolean tryPlayPersonalSong(ServerPlayer player, PersonalSource source, JukeboxSong song) {
+        return active != null && active.playPersonalSong(player, source, song);
+    }
+
     public boolean playPersonal(ServerPlayer player, PersonalSource source) {
+        if (source.disc().getCustomName() == null) { source.stop(); return false; }
+        var session = allocate(player, source);
+        if (session == null) return false;
+        load(session, player, source.disc().getCustomName().getString());
+        return true;
+    }
+
+    public boolean playPersonalSong(ServerPlayer player, PersonalSource source, JukeboxSong song) {
+        var session = allocate(player, source);
+        if (session == null) return false;
+        session.nativeSong = song;
+        session.startTick = session.level.getGameTime() + 1;
+        return true;
+    }
+
+    private Session allocate(ServerPlayer player, PersonalSource source) {
         var old = sessions.values().iterator();
         while (old.hasNext()) {
             var session = old.next();
-            if (session.personal != null && session.owner.equals(player.getUUID())) {
+            if (source.personal() && session.personal != null && session.personal.personal()
+                    && session.owner.equals(player.getUUID())) {
                 stopListeners(session);
+                session.personal.stop();
                 old.remove();
             }
         }
-        if (sessions.size() >= 8 || !transport.supports(player) || source.disc().getCustomName() == null) {
-            source.stop();
-            player.sendOverlayMessage(Component.literal("Cannot start backpack music: session limit or incompatible Mysix client."));
-            return false;
+        if (sessions.size() >= 8 || !transport.supports(player)) {
+            source.failed();
+            player.sendOverlayMessage(Component.literal("Cannot start music: session limit or incompatible Mysix client."));
+            return null;
         }
-        var session = new Session((ServerLevel) player.level(), player.blockPosition(), source.disc(), player.getUUID());
+        var session = new Session(source.level(player), source.position(player), source.disc(), player.getUUID());
         session.personal = source;
         session.personalPlayer = player;
         sessions.put(session.id, session);
-        load(session, player, source.disc().getCustomName().getString());
-        return true;
+        return session;
     }
 
     public void insert(ServerPlayer player, ServerLevel level, BlockPos pos, ItemStack held) {
@@ -117,6 +145,9 @@ public final class OnlineJukebox {
                 .map(id -> "https://www.youtube.com/watch?v=" + id).orElse(query);
         downloads.load(request, result -> {
             try {
+                if (session.personal != null && session.personal.needsDuration() && result.durationSeconds() <= 0) {
+                    throw new java.io.IOException("This recording has no duration and cannot be used in a playlist");
+                }
                 long size = Files.size(result.file());
                 if (size <= 0 || size > JukeboxAudioPayload.MAX_BYTES) {
                     throw new java.io.IOException("Audio exceeds the 30 MiB multiplayer limit");
@@ -140,8 +171,9 @@ public final class OnlineJukebox {
     }
 
     private boolean stillInserted(Session session) {
-        if (session.personal != null) return session.level.getServer().getPlayerList().getPlayer(session.owner)
-                == session.personalPlayer && session.personal.isActive();
+        if (session.personal != null) return (!session.personal.personal()
+                || session.level.getServer().getPlayerList().getPlayer(session.owner) == session.personalPlayer)
+                && session.personal.isActive();
         return session.level.hasChunkAt(session.pos)
                 && session.level.getBlockEntity(session.pos) instanceof JukeboxBlockEntity box
                 && box.getTheItem() == session.disc;
@@ -151,7 +183,7 @@ public final class OnlineJukebox {
         if (sessions.remove(session.id) != session) return;
         stopListeners(session);
         if (stillInserted(session)) {
-            if (session.personal != null) session.personal.stop();
+            if (session.personal != null) session.personal.failed();
             else ((JukeboxBlockEntity) session.level.getBlockEntity(session.pos)).popOutTheItem();
             var player = session.level.getServer().getPlayerList().getPlayer(session.owner);
             if (player != null) player.sendOverlayMessage(Component.literal(
@@ -171,17 +203,19 @@ public final class OnlineJukebox {
                 iterator.remove();
                 continue;
             }
-            if (session.audio == null) continue;
-            if (session.result.durationSeconds() > 0 && session.level.getGameTime() > session.startTick
-                    + Math.ceil(session.result.durationSeconds() * 20)) {
+            if (session.audio == null && session.nativeSong == null) continue;
+            double duration = session.nativeSong != null ? session.nativeSong.lengthInSeconds()
+                    : session.result.durationSeconds();
+            if (duration > 0 && session.level.getGameTime() > session.startTick + Math.ceil(duration * 20)) {
                 stopListeners(session);
-                if (session.personal != null) session.personal.stop();
+                if (session.personal != null) session.personal.finished();
                 iterator.remove();
                 continue;
             }
             var nearby = new HashSet<UUID>();
             for (var player : server.getPlayerList().getPlayers()) {
-                boolean audible = session.personal != null ? player.getUUID().equals(session.owner)
+                boolean isPersonal = session.personal != null && session.personal.personal();
+                boolean audible = isPersonal ? player.getUUID().equals(session.owner)
                         : player.level() == session.level && session.pos.closerToCenterThan(player.position(), 64);
                 if (!audible || !transport.supports(player)) continue;
                 nearby.add(player.getUUID());
@@ -189,8 +223,15 @@ public final class OnlineJukebox {
                 if (listener == null || listener.player != player) {
                     listener = new Listener(player);
                     session.listeners.put(player.getUUID(), listener);
-                    transport.send(player, packet(session, session.personal != null
+                    if (session.nativeSong == null) transport.send(player, packet(session, isPersonal
                             ? JukeboxAudioPayload.PERSONAL_BEGIN : JukeboxAudioPayload.BEGIN, 0, new byte[0]));
+                }
+                if (session.nativeSong != null) {
+                    if (!listener.started && session.level.getGameTime() >= session.startTick) {
+                        transport.send(player, packet(session, JukeboxAudioPayload.PERSONAL_NATIVE, 0, new byte[0]));
+                        listener.started = true;
+                    }
+                    continue;
                 }
                 // At most 96 KiB/player/jukebox each tick; never one huge packet.
                 for (int count = 0; count < 4 && transferChunksLeft > 0
@@ -219,9 +260,11 @@ public final class OnlineJukebox {
     }
 
     private JukeboxAudioPayload packet(Session s, int kind, int offset, byte[] bytes) {
+        String title = s.nativeSong != null ? s.nativeSong.description().getString() : s.result.title();
         return new JukeboxAudioPayload(s.id, kind, s.level.dimension().identifier(), s.pos,
-                s.result.videoId(), s.result.title().substring(0, Math.min(200, s.result.title().length())),
-                s.audio.length, s.startTick, offset, bytes);
+                s.nativeSong != null ? "aaaaaaaaaaa" : s.result.videoId(), title.substring(0, Math.min(200, title.length())),
+                s.audio == null ? 0 : s.audio.length, s.startTick, offset, bytes,
+                s.nativeSong == null ? "" : s.nativeSong.soundEvent().value().location().toString());
     }
 
     private void stopListeners(Session session) {
@@ -253,6 +296,7 @@ public final class OnlineJukebox {
         final UUID owner;
         final Map<UUID, Listener> listeners = new HashMap<>();
         DownloadResult result;
+        JukeboxSong nativeSong;
         byte[] audio;
         long startTick;
         PersonalSource personal;
