@@ -1,3 +1,16 @@
+# Project Mysix 0.4.0 (unreleased)
+
+- Optional Sculk Radio 1.0.0+26.3 external-audio routing through its public stream API.
+- Uses connected speakers, including paths through Sculk Radio relays and antennas.
+- Each listener hears the nearest loaded speaker; the source radio jukebox is silent.
+- Late arrival and speaker changes keep the existing playback timeline.
+- Removing a speaker or ejecting the CD cancels the appropriate playback.
+- Existing download/cache and bounded packet transfer are shared across the network.
+- Added real-mod client/server, remote listener, speaker-switching, relay traversal,
+  and combined optional-mod checks.
+- Requires Fabric Language Kotlin for Sculk Radio's stream graph.
+- External-song redstone output and in-game audio/multiplayer checks remain outside this adapter.
+
 # Project Mysix 0.3.0 (unreleased)
 
 - Optional Additional Additions Fabric 10.0.14 integration for Minecraft 26.3.

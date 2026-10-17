@@ -19,7 +19,7 @@ repositories {
     }
 }
 
-configurations { backpackTestRuntime; additionsTestRuntime }
+configurations { backpackTestRuntime; additionsTestRuntime; sculkTestRuntime }
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
@@ -35,12 +35,35 @@ dependencies {
     backpackTestRuntime 'maven.modrinth:travelersbackpack:SmhjfeWr'
     backpackTestRuntime 'maven.modrinth:ohNO6lps:JpKvrr9J'
     additionsTestRuntime 'maven.modrinth:addadd:1RIHaXDM'
+    sculkTestRuntime 'maven.modrinth:sculk-radio:QvRrQhHR'
+    // Sculk Radio's stream graph uses kotlin.Pair even without Fzzy Config installed.
+    sculkTestRuntime 'maven.modrinth:fabric-language-kotlin:SKW1BTL3'
+    if (providers.gradleProperty('withSculkRadio').isPresent()) {
+        runtimeOnly 'maven.modrinth:sculk-radio:QvRrQhHR'
+        runtimeOnly 'maven.modrinth:fabric-language-kotlin:SKW1BTL3'
+    }
     if (providers.gradleProperty('withAdditions').isPresent()) {
         runtimeOnly 'maven.modrinth:addadd:1RIHaXDM'
     }
     if (providers.gradleProperty('withBackpack').isPresent()) {
         runtimeOnly 'maven.modrinth:travelersbackpack:SmhjfeWr'
         runtimeOnly 'maven.modrinth:ohNO6lps:JpKvrr9J'
+    }
+}
+
+['sculkTest': 'client', 'sculkServerTest': 'server'].each { taskName, side ->
+    tasks.register(taskName, Test) {
+        description = 'Tests Mysix routing with the released Sculk Radio 1.0.0+26.3 JAR.'
+        group = 'verification'
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath + configurations.sculkTestRuntime
+        useJUnitPlatform { excludeTags 'network' }
+        filter {
+            includeTestsMatching '*OnlineJukeboxTest'
+            includeTestsMatching '*SculkRadioIntegrationTest'
+        }
+        systemProperty 'fabric.side', side
+        systemProperty 'mysix.sculkTests', 'true'
     }
 }
 
@@ -118,25 +141,28 @@ tasks.register('networkTest', Test) {
     testLogging { showStandardStreams = true }
 }
 
-['additionsTest': 'client', 'additionsServerTest': 'server', 'combinedCompatTest': 'client'].each { taskName, side ->
+['additionsTest': 'client', 'additionsServerTest': 'server', 'combinedCompatTest': 'client', 'allCompatTest': 'client'].each { taskName, side ->
     tasks.register(taskName, Test) {
         description = 'Tests Additional Additions 10.0.14 optional album and Pocket Jukebox hooks.'
         group = 'verification'
         testClassesDirs = sourceSets.test.output.classesDirs
         classpath = sourceSets.test.runtimeClasspath + configurations.additionsTestRuntime
-        if (taskName == 'combinedCompatTest') classpath += configurations.backpackTestRuntime
+        if (taskName in ['combinedCompatTest', 'allCompatTest']) classpath += configurations.backpackTestRuntime
+        if (taskName == 'allCompatTest') classpath += configurations.sculkTestRuntime
         useJUnitPlatform { excludeTags 'network' }
         filter {
             includeTestsMatching '*DiscPlaylistTest'
             includeTestsMatching '*OnlineJukeboxTest'
             includeTestsMatching '*AdditionsIntegrationTest'
-            if (taskName == 'combinedCompatTest') {
+            if (taskName in ['combinedCompatTest', 'allCompatTest']) {
                 includeTestsMatching '*BackpackIntegrationTest'
                 includeTestsMatching '*BackpackPlaybackControllerTest'
             }
+            if (taskName == 'allCompatTest') includeTestsMatching '*SculkRadioIntegrationTest'
         }
         systemProperty 'fabric.side', side
         systemProperty 'mysix.additionsTests', 'true'
-        if (taskName == 'combinedCompatTest') systemProperty 'mysix.backpackTests', 'true'
+        if (taskName in ['combinedCompatTest', 'allCompatTest']) systemProperty 'mysix.backpackTests', 'true'
+        if (taskName == 'allCompatTest') systemProperty 'mysix.sculkTests', 'true'
     }
 }

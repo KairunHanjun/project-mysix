@@ -27,6 +27,7 @@ public final class Mysix implements ModInitializer {
         me.simonhamour.mysix.music.OnlineJukebox.initialize();
         me.simonhamour.mysix.compat.TravelersBackpackCompat.initialize();
         me.simonhamour.mysix.compat.AdditionalAdditionsCompat.initialize();
+        me.simonhamour.mysix.compat.SculkRadioCompat.initialize();
         LOGGER.info("Project Mysix loaded: 16 craftable CDs.");
     }
 }

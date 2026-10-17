@@ -28,7 +28,7 @@ jobs:
           version=$(sed -n 's/^version=//p' gradle.properties | tr -d '\r')
           test "$GITHUB_REF_NAME" = "v$version"
       - name: Build and run offline and dedicated-server tests
-        run: bash gradlew --no-daemon --max-workers=2 build backpackTest backpackServerTest additionsTest additionsServerTest combinedCompatTest
+        run: bash gradlew --no-daemon --max-workers=2 build backpackTest backpackServerTest additionsTest additionsServerTest combinedCompatTest sculkTest sculkServerTest allCompatTest
       - name: Calculate release checksums
         shell: bash
         run: |

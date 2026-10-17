@@ -28,6 +28,13 @@ public final class OnlineJukebox {
         boolean supports(ServerPlayer player);
         void send(ServerPlayer player, JukeboxAudioPayload packet);
     }
+    public record Output(ServerLevel level, BlockPos pos, double range) {}
+    public interface Route {
+        boolean active();
+        List<Output> outputs();
+        void close();
+    }
+    @FunctionalInterface public interface Routes { Route open(ServerLevel level, BlockPos pos); }
     public interface PersonalSource {
         ItemStack disc();
         boolean isActive();
@@ -43,11 +50,17 @@ public final class OnlineJukebox {
     private static OnlineJukebox active;
     private final Downloads downloads;
     private final Transport transport;
+    private final Routes routes;
     private final Map<UUID, Session> sessions = new LinkedHashMap<>();
 
     public OnlineJukebox(Downloads downloads, Transport transport) {
+        this(downloads, transport, me.simonhamour.mysix.compat.SculkRadioCompat::open);
+    }
+
+    public OnlineJukebox(Downloads downloads, Transport transport, Routes routes) {
         this.downloads = downloads;
         this.transport = transport;
+        this.routes = routes;
     }
 
     public static void initialize() {
@@ -212,19 +225,32 @@ public final class OnlineJukebox {
                 iterator.remove();
                 continue;
             }
+            boolean isPersonal = session.personal != null && session.personal.personal();
+            if (!isPersonal) {
+                if (session.route != null && !session.route.active()) {
+                    session.route.close(); session.route = null;
+                }
+                if (session.route == null) session.route = routes.open(session.level, session.pos);
+            }
+            var outputs = session.route == null ? List.of(new Output(session.level, session.pos, 64))
+                    : session.route.outputs();
             var nearby = new HashSet<UUID>();
             for (var player : server.getPlayerList().getPlayers()) {
-                boolean isPersonal = session.personal != null && session.personal.personal();
-                boolean audible = isPersonal ? player.getUUID().equals(session.owner)
-                        : player.level() == session.level && session.pos.closerToCenterThan(player.position(), 64);
+                var output = isPersonal ? new Output(session.level, session.pos, 64) : outputs.stream()
+                        .filter(target -> player.level() == target.level()
+                                && target.pos().closerToCenterThan(player.position(), target.range()))
+                        .min(Comparator.comparingDouble(target -> target.pos().distToCenterSqr(player.position())))
+                        .orElse(null);
+                boolean audible = isPersonal ? player.getUUID().equals(session.owner) : output != null;
                 if (!audible || !transport.supports(player)) continue;
                 nearby.add(player.getUUID());
                 var listener = session.listeners.get(player.getUUID());
-                if (listener == null || listener.player != player) {
-                    listener = new Listener(player);
+                if (listener == null || listener.player != player || !listener.output.equals(output)) {
+                    if (listener != null) transport.send(listener.player, packet(session, JukeboxAudioPayload.STOP, 0, new byte[0]));
+                    listener = new Listener(player, output);
                     session.listeners.put(player.getUUID(), listener);
                     if (session.nativeSong == null) transport.send(player, packet(session, isPersonal
-                            ? JukeboxAudioPayload.PERSONAL_BEGIN : JukeboxAudioPayload.BEGIN, 0, new byte[0]));
+                            ? JukeboxAudioPayload.PERSONAL_BEGIN : JukeboxAudioPayload.BEGIN, 0, new byte[0], output));
                 }
                 if (session.nativeSong != null) {
                     if (!listener.started && session.level.getGameTime() >= session.startTick) {
@@ -238,13 +264,13 @@ public final class OnlineJukebox {
                         && listener.offset < session.audio.length; count++) {
                     int end = Math.min(session.audio.length, listener.offset + JukeboxAudioPayload.CHUNK_BYTES);
                     transport.send(player, packet(session, JukeboxAudioPayload.CHUNK, listener.offset,
-                            Arrays.copyOfRange(session.audio, listener.offset, end)));
+                            Arrays.copyOfRange(session.audio, listener.offset, end), output));
                     listener.offset = end;
                     transferChunksLeft--;
                 }
                 if (listener.offset == session.audio.length && !listener.started
                         && session.level.getGameTime() >= session.startTick) {
-                    transport.send(player, packet(session, JukeboxAudioPayload.PLAY, 0, new byte[0]));
+                    transport.send(player, packet(session, JukeboxAudioPayload.PLAY, 0, new byte[0], output));
                     listener.started = true;
                 }
             }
@@ -260,8 +286,12 @@ public final class OnlineJukebox {
     }
 
     private JukeboxAudioPayload packet(Session s, int kind, int offset, byte[] bytes) {
+        return packet(s, kind, offset, bytes, new Output(s.level, s.pos, 64));
+    }
+
+    private JukeboxAudioPayload packet(Session s, int kind, int offset, byte[] bytes, Output output) {
         String title = s.nativeSong != null ? s.nativeSong.description().getString() : s.result.title();
-        return new JukeboxAudioPayload(s.id, kind, s.level.dimension().identifier(), s.pos,
+        return new JukeboxAudioPayload(s.id, kind, output.level().dimension().identifier(), output.pos(),
                 s.nativeSong != null ? "aaaaaaaaaaa" : s.result.videoId(), title.substring(0, Math.min(200, title.length())),
                 s.audio == null ? 0 : s.audio.length, s.startTick, offset, bytes,
                 s.nativeSong == null ? "" : s.nativeSong.soundEvent().value().location().toString());
@@ -272,6 +302,7 @@ public final class OnlineJukebox {
             transport.send(listener.player, packet(session, JukeboxAudioPayload.STOP, 0, new byte[0]));
         }
         session.listeners.clear();
+        if (session.route != null) { session.route.close(); session.route = null; }
     }
 
     public void clear() {
@@ -284,9 +315,10 @@ public final class OnlineJukebox {
 
     private static final class Listener {
         final ServerPlayer player;
+        final Output output;
         int offset;
         boolean started;
-        Listener(ServerPlayer player) { this.player = player; }
+        Listener(ServerPlayer player, Output output) { this.player = player; this.output = output; }
     }
     private static final class Session {
         final UUID id = UUID.randomUUID();
@@ -300,6 +332,7 @@ public final class OnlineJukebox {
         byte[] audio;
         long startTick;
         PersonalSource personal;
+        Route route;
         ServerPlayer personalPlayer;
         Session(ServerLevel level, BlockPos pos, ItemStack disc, UUID owner) {
             this.level = level; this.pos = pos; this.disc = disc; this.owner = owner;

@@ -17,6 +17,7 @@ A Fabric mod for **Minecraft Java 26.3** with vanilla music, YouTube song search
 - Works in survival. Removing the CD or breaking the jukebox stops playback.
 - Optional **Traveler's Backpack 11.4.1** support: play Mysix CDs through the equipped backpack's Jukebox Upgrade, audible only to its wearer.
 - Optional **Additional Additions 10.0.14** support: Mysix CDs in Albums and the Pocket Jukebox, including mixed vanilla/external playlists.
+- Optional **Sculk Radio 1.0.0+26.3** support: route external CDs through connected speakers.
 
 ## How to use
 
@@ -63,6 +64,16 @@ Development launch: `.\gradlew.bat runClient -PwithAdditions`. Add `-PwithBackpa
 1. Validate playback and synchronization with multiple players on a dedicated server.
 2. Improve first-playback speed and progress feedback.
 3. Add cache cleanup that accounts for CDs being moved, stored, or destroyed.
-4. Explore **Sculk Radio** compatibility, where a matching version is available.
+4. Validate optional integrations together in game. Sophisticated Backpacks porting is paused.
 
-Compatibility changes in 0.2.0 and 0.3.0 are currently unreleased; the public 0.1.0 prerelease supports vanilla jukebox blocks.
+Compatibility changes in 0.2.0–0.4.0 are currently unreleased; the public 0.1.0 prerelease supports vanilla jukebox blocks.
+
+## Sculk Radio compatibility (0.4.0)
+
+Install **Sculk Radio 1.0.0+26.3** and **Fabric Language Kotlin** alongside Mysix on server and clients. Build Sculk Radio's radio (sculk shrieker above a jukebox) and speaker (sculk sensor above a note block), connected directly or through its relays/antennas. Insert an external Mysix CD. The radio sends music to the network instead of playing at the source jukebox.
+
+Each player hears the nearest connected, loaded speaker. Speaker changes and late arrivals keep the song's timeline; disconnecting the speaker or ejecting the CD stops its sound. Range follows Sculk Radio's setting, capped at Mysix's 64 blocks. The server downloads each recording once and shares its existing audio data. Simple Voice Chat and AudioPlayer are not required for Mysix playback.
+
+This adapter covers external audio routing; it does not synthesize jukebox redstone output or implement voice/microphone features. Unsupported Sculk Radio versions disable the adapter. Kotlin is needed by Sculk Radio's stream graph. In-game audio and live multiplayer checks remain pending.
+
+Development launch: `.\gradlew.bat runClient -PwithSculkRadio`. Combine with the other compatibility flags as needed.

@@ -63,7 +63,8 @@ class OnlineJukeboxTest {
         Consumer<DownloadResult> success;
         Consumer<Exception> failure;
 
-        Fixture() {
+        Fixture() { this((level, pos) -> null); }
+        Fixture(OnlineJukebox.Routes routes) {
             var playerList = mock(PlayerList.class);
             when(server.getPlayerList()).thenReturn(playerList);
             when(playerList.getPlayers()).thenReturn(players);
@@ -97,7 +98,7 @@ class OnlineJukeboxTest {
                     new OnlineJukebox.Transport() {
                         public boolean supports(ServerPlayer player) { return true; }
                         public void send(ServerPlayer player, JukeboxAudioPayload packet) { sent.add(new Sent(player, packet)); }
-                    });
+                    }, routes);
         }
         void insert() { online.insert(owner, level, BlockPos.ZERO, held); }
         void complete(byte[] audio) throws Exception {
@@ -108,6 +109,43 @@ class OnlineJukeboxTest {
         List<JukeboxAudioPayload> packets(ServerPlayer player) {
             return sent.stream().filter(s -> s.player == player).map(Sent::packet).toList();
         }
+    }
+
+    @Test void radioRoutesToRemoteSpeakerAndDisconnectionStopsItsListeners() throws Exception {
+        var targets = new ArrayList<OnlineJukebox.Output>();
+        var route = mock(OnlineJukebox.Route.class);
+        when(route.active()).thenReturn(true);
+        when(route.outputs()).thenReturn(targets);
+        var f = new Fixture((level, pos) -> route);
+        var speaker = new BlockPos(200, 64, 0);
+        targets.add(new OnlineJukebox.Output(f.level, speaker, 48));
+        when(f.friend.position()).thenReturn(new Vec3(201, 64, 0));
+        f.insert(); f.complete(new byte[]{1, 2, 3}); f.time.set(20); f.online.tick(f.server);
+        assertTrue(f.packets(f.owner).isEmpty(), "A radio must silence its source jukebox");
+        assertEquals(speaker, f.packets(f.friend).getFirst().pos());
+        assertEquals(JukeboxAudioPayload.PLAY, f.packets(f.friend).getLast().kind());
+        targets.clear(); f.online.tick(f.server);
+        assertEquals(JukeboxAudioPayload.STOP, f.packets(f.friend).getLast().kind());
+        f.box.popOutTheItem(); f.online.tick(f.server); verify(route).close();
+    }
+
+    @Test void switchingToNearestSpeakerKeepsTheOriginalTimelineAndStopsOldSound() throws Exception {
+        var targets = new ArrayList<OnlineJukebox.Output>();
+        var route = mock(OnlineJukebox.Route.class);
+        when(route.active()).thenReturn(true); when(route.outputs()).thenReturn(targets);
+        var f = new Fixture((level, pos) -> route);
+        var first = new BlockPos(200, 64, 0); var next = new BlockPos(260, 64, 0);
+        targets.add(new OnlineJukebox.Output(f.level, first, 48));
+        targets.add(new OnlineJukebox.Output(f.level, next, 48));
+        when(f.friend.position()).thenReturn(new Vec3(201, 64, 0));
+        f.insert(); f.complete(new byte[]{1, 2, 3}); f.time.set(20); f.online.tick(f.server);
+        int before = f.packets(f.friend).size();
+        when(f.friend.position()).thenReturn(new Vec3(261, 64, 0));
+        f.time.set(60); f.online.tick(f.server);
+        var packets = f.packets(f.friend).subList(before, f.packets(f.friend).size());
+        assertEquals(JukeboxAudioPayload.STOP, packets.getFirst().kind());
+        assertEquals(next, packets.get(1).pos());
+        assertEquals(20, packets.getLast().startTick(), "Moving between speakers must not restart the song");
     }
 
     @Test void twoPlayersReceiveIdenticalAudioAndRemovalStopsBoth() throws Exception {
