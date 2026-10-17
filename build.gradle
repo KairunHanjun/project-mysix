@@ -128,6 +128,8 @@ tasks.register('serverTest', Test) {
         includeTestsMatching '*AudioTransferTest'
         includeTestsMatching '*BackpackPlaybackControllerTest'
         includeTestsMatching '*DiscPlaylistTest'
+        includeTestsMatching '*SetupCommandPermissionsTest'
+        includeTestsMatching '*ToolInstallerTest'
     }
     systemProperty 'fabric.side', 'server'
 }
@@ -172,6 +174,30 @@ tasks.register('networkTest', Test) {
     useJUnitPlatform { includeTags 'network' }
     systemProperty 'mysix.networkTests', 'true'
     systemProperty 'mysix.integration.directory', layout.buildDirectory.dir('integration-downloads').get().asFile.absolutePath
+    testLogging { showStandardStreams = true }
+}
+
+tasks.register('managedSetupTest', Test) {
+    description = 'Opt-in fresh managed-tool install, token helper startup and anonymous YouTube audio test.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { includeTags 'network' }
+    filter { includeTestsMatching '*ManagedToolsNetworkTest' }
+    systemProperty 'mysix.setupNetworkTests', 'true'
+    systemProperty 'mysix.setupTestDirectory', layout.buildDirectory.dir('managed-setup-test').get().asFile.absolutePath
+    testLogging { showStandardStreams = true }
+}
+
+tasks.register('managedInstallTest', Test) {
+    description = 'Opt-in platform tool installation and helper startup smoke test, without YouTube requests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { includeTags 'network' }
+    filter { includeTestsMatching '*ManagedToolsInstallTest' }
+    systemProperty 'mysix.setupInstallTests', 'true'
+    systemProperty 'mysix.setupTestDirectory', layout.buildDirectory.dir('managed-setup-test').get().asFile.absolutePath
     testLogging { showStandardStreams = true }
 }
 

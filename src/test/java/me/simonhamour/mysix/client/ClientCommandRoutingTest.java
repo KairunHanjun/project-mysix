@@ -39,7 +39,7 @@ class ClientCommandRoutingTest {
     @ValueSource(strings = {
             "mysix download Dhyo Haw - Ada Aku Disini",
             "mysix download https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            "mysix download Björk - Jóga"
+            "mysix download Björk - Jóga", "mysix check", "mysix check Dhyo Haw - Ada Aku Disini"
     })
     void downloadReachesServerOnceWithOriginalQuery(String command) throws Exception {
         var dispatcher = new CommandDispatcher<FabricClientCommandSource>();
@@ -66,6 +66,32 @@ class ClientCommandRoutingTest {
         assertTrue(packets.isEmpty());
     }
 
+    @Test void setupRequiresOwnerAndForwardsExactlyOnce() throws Exception {
+        var dispatcher = new CommandDispatcher<FabricClientCommandSource>();
+        var packets = new ArrayList<ServerboundChatCommandPacket>();
+        MysixClient.registerCommands(dispatcher, (source, packet) -> packets.add(packet));
+        var source = sourceWithCheats(true);
+        assertThrows(CommandSyntaxException.class, () -> dispatcher.execute("mysix setup", source));
+        when(source.getPlayer().permissions().hasPermission(Permissions.COMMANDS_OWNER)).thenReturn(true);
+        assertEquals(1, dispatcher.execute("mysix setup", source));
+        assertEquals(1, packets.size()); assertEquals("mysix setup", packets.getFirst().command());
+    }
+
+    @Test void integratedWorldOwnerCanForwardSetupWithCheatsDisabled() throws Exception {
+        var dispatcher = new CommandDispatcher<FabricClientCommandSource>();
+        var packets = new ArrayList<ServerboundChatCommandPacket>();
+        MysixClient.registerCommands(dispatcher, (source, packet) -> packets.add(packet));
+        var source = sourceWithCheats(false);
+        var client = mock(net.minecraft.client.Minecraft.class);
+        var server = mock(net.minecraft.client.server.IntegratedServer.class);
+        when(source.getClient()).thenReturn(client); when(client.getSingleplayerServer()).thenReturn(server);
+        when(server.isSingleplayerOwner(source.getPlayer().nameAndId())).thenReturn(true);
+        assertEquals(1, dispatcher.execute("mysix setup", source));
+        assertEquals(1, packets.size());
+        assertThrows(CommandSyntaxException.class, () -> dispatcher.execute("mysix download Test", source));
+        assertThrows(CommandSyntaxException.class, () -> dispatcher.execute("mysix play", source));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"mysix play", "mysix play dQw4w9WgXcQ", "mysix stop"})
     void playbackCommandsStillParse(String command) {
@@ -78,7 +104,7 @@ class ClientCommandRoutingTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"mysix download Dhyo Haw - Ada Aku Disini", "mysix play",
-            "mysix play Yikl044w8d0", "mysix stop"})
+            "mysix play Yikl044w8d0", "mysix stop", "mysix setup", "mysix check"})
     void cheatsDisabledRejectsEveryTestCommand(String command) {
         var dispatcher = new CommandDispatcher<FabricClientCommandSource>();
         MysixClient.registerCommands(dispatcher, (source, packet) -> fail("Must not forward without permission"));

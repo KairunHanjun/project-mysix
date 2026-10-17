@@ -36,9 +36,17 @@ Rename it in an anvil, then insert it into an empty jukebox. An unnamed CD plays
 
 - **Java 25**, **Fabric Loader 0.19.5+**, and **Fabric API for 26.3**.
 - Install Mysix and Fabric API on **both the server and every client**.
-- The server needs **yt-dlp, FFmpeg/ffprobe, and Deno** on its PATH. For singleplayer, install these on your own computer.
+- In **0.6.0**, run **`/mysix setup`** once to install and manage the server's downloader tools and anonymous token helper. Players need no external tools or Google login. Manual yt-dlp, FFmpeg/ffprobe, and Deno on PATH remain supported.
 
 Download the regular JAR; the `-sources.jar` is for developers. No songs are bundled with the mod.
+
+## Automatic setup (0.6.0)
+
+On a dedicated server, run `mysix setup` in its console, or `/mysix setup` as a level-4 operator. A singleplayer world owner can run setup without enabling cheats. Mysix detects OS/CPU, downloads checksum-pinned tools into `mysix-tools/`, installs locked helper dependencies, and starts the helper on localhost. It then tries an actual anonymous audio download; installation success and YouTube access are reported separately. First setup needs internet access, disk space, and permission to run executables and may take several minutes. No system PATH changes, administrator installation, cookies, or Google sign-in are required by the setup flow.
+
+With cheats/operator access, `/mysix check` retests retrieval and conversion; `/mysix check Artist - Title` or a YouTube link tests your choice. Normal CD use remains available in survival. Downloads and helper startup run off the Minecraft tick thread. The helper restarts when needed and shuts down with the server. `managedTools: true` in `config/mysix-download.json` selects the installed tools after restart; set it to `false` to return to your saved manual command.
+
+Automatic bundles cover Windows x64, Linux x64/ARM64 with glibc, and macOS x64/ARM64. macOS and ARM64 bundles still need runtime validation. Alpine/musl, Windows ARM64, and other platforms require manual tools. YouTube may still reject a VPS even with the helper; setup does not guarantee access. In 0.4.0–0.5.0, tools must be installed manually.
 
 ## Current limits
 
@@ -67,7 +75,7 @@ Development launch: `.\gradlew.bat runClient -PwithAdditions`. Add `-PwithBackpa
 3. Add cache cleanup that accounts for CDs being moved, stored, or destroyed.
 4. Validate optional integrations together in game. Sophisticated Backpacks porting is paused.
 
-Compatibility changes in 0.2.0–0.5.0 are currently unreleased; the public 0.1.0 prerelease supports vanilla jukebox blocks.
+The public 0.4.0 prerelease includes Backpack, Additional Additions, and Sculk Radio support. Visual Jukebox (0.5.0) and automatic setup (0.6.0) are currently unreleased.
 
 ## Sculk Radio compatibility (0.4.0)
 

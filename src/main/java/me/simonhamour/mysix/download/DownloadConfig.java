@@ -6,7 +6,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-public record DownloadConfig(List<String> ytDlpCommand, int timeoutSeconds, int maxFileMiB) {
+public record DownloadConfig(List<String> ytDlpCommand, int timeoutSeconds, int maxFileMiB, boolean managedTools) {
+    public DownloadConfig(List<String> ytDlpCommand, int timeoutSeconds, int maxFileMiB) {
+        this(ytDlpCommand, timeoutSeconds, maxFileMiB, false);
+    }
     public DownloadConfig {
         if (ytDlpCommand == null || ytDlpCommand.isEmpty()
                 || ytDlpCommand.stream().anyMatch(s -> s == null || s.isBlank())) {
@@ -19,6 +22,16 @@ public record DownloadConfig(List<String> ytDlpCommand, int timeoutSeconds, int 
 
     public static DownloadConfig defaults() {
         return new DownloadConfig(List.of("yt-dlp"), 90, 30);
+    }
+
+    public void save(Path file) throws IOException {
+        Files.createDirectories(file.toAbsolutePath().getParent());
+        var temporary = file.resolveSibling(file.getFileName() + ".tmp");
+        Files.writeString(temporary, new GsonBuilder().setPrettyPrinting().create().toJson(this) + "\n");
+        try { Files.move(temporary, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE); }
+        catch (java.nio.file.AtomicMoveNotSupportedException error) {
+            Files.move(temporary, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 
     public static DownloadConfig load(Path file) throws IOException {

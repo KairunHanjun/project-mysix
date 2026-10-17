@@ -48,6 +48,28 @@ class YtDlpDownloaderTest {
         assertTrue(Files.isRegularFile(result.file()));
     }
 
+    @Test void keepsExplicitManagedRuntimeAndDoesNotReplaceItsPathWithSystemDeno() throws Exception {
+        var config = new DownloadConfig(List.of("yt-dlp", "--js-runtimes", "deno:C:/Mysix Tools/deno.exe"), 90, 30, true);
+        var calls = new ArrayList<List<String>>();
+        var service = new YtDlpDownloader(config, directory, (args, timeout, log) -> {
+            calls.add(args); return args.contains("--skip-download") ? metadata() : file();
+        });
+        service.download("Artist - Title");
+        for (var args : calls) {
+            assertEquals(1, args.stream().filter("--js-runtimes"::equals).count());
+            assertEquals("deno:C:/Mysix Tools/deno.exe", args.get(args.indexOf("--js-runtimes") + 1));
+            assertFalse(args.contains("--remote-components"));
+        }
+    }
+
+    @Test void botChallengeIsReportedWithoutLongCookieInstructionsOrLoginRequest() {
+        var service = new YtDlpDownloader(DownloadConfig.defaults(), directory, (args, timeout, log) ->
+                new YtDlpDownloader.ProcessResult(1, "", "ERROR: [youtube] Sign in to confirm you're not a bot. Use --cookies-from-browser or --cookies https://example.com"));
+        var error = assertThrows(IOException.class, () -> service.download("Artist - Title"));
+        assertTrue(error.getMessage().contains("/mysix setup"));
+        assertFalse(error.getMessage().contains("--cookies"));
+    }
+
     @Test
     void repeatedCdQueryReusesFileAndMissingCacheIsDownloadedAgain() throws Exception {
         var calls = new ArrayList<List<String>>();

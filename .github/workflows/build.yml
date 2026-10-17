@@ -49,9 +49,37 @@ jobs:
           name: test-reports
           path: build/reports/tests/
           if-no-files-found: ignore
+  managed-tools:
+    name: Managed setup (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+      - name: Install pinned tools and start localhost helper
+        shell: bash
+        run: bash gradlew --no-daemon --max-workers=2 managedInstallTest
+      - name: Upload installation test reports
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: managed-setup-${{ matrix.os }}
+          path: |
+            build/reports/tests/managedInstallTest/
+            build/managed-setup-test/mysix-tools/**/logs/provider-install.stderr.log
+            build/managed-setup-test/mysix-tools/**/logs/provider.stderr.log
+          if-no-files-found: ignore
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, managed-tools]
     runs-on: ubuntu-latest
     permissions:
       contents: write

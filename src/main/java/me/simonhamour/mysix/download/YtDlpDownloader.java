@@ -68,8 +68,10 @@ public final class YtDlpDownloader {
 
     private ArrayList<String> command() {
         var command = new ArrayList<>(config.ytDlpCommand());
+        if (!command.contains("--js-runtimes")) command.addAll(List.of("--js-runtimes", "deno"));
+        // Official managed executables already bundle EJS. Keep that code pinned too.
+        if (!config.managedTools()) command.addAll(List.of("--remote-components", "ejs:github"));
         command.addAll(List.of("--ignore-config", "--no-playlist", "--no-progress",
-                "--js-runtimes", "deno", "--remote-components", "ejs:github",
                 "--socket-timeout", "10", "--retries", "1", "--extractor-retries", "1"));
         return command;
     }
@@ -167,8 +169,14 @@ public final class YtDlpDownloader {
         throw new IOException("Download failed after retrying the same video: " + failure.getMessage(), failure);
     }
 
-    private static void checkSuccess(ProcessResult result, String stage) throws IOException {
+    private void checkSuccess(ProcessResult result, String stage) throws IOException {
         if (result.exitCode() != 0) {
+            String diagnostic = result.stderr().toLowerCase(Locale.ROOT);
+            if (diagnostic.contains("confirm you’re not a bot") || diagnostic.contains("confirm you're not a bot")) {
+                throw new IOException(config.managedTools()
+                        ? "YouTube refused anonymous access. Tools are installed; contact the server owner."
+                        : "YouTube challenged this server. Its owner can run /mysix setup, then /mysix check.");
+            }
             var detail = result.stderr().lines().filter(s -> s.startsWith("ERROR:")).reduce((a, b) -> b)
                     .orElse("yt-dlp exited with code " + result.exitCode());
             throw new IOException(stage + " failed: " + detail.substring(0, Math.min(detail.length(), 350)));

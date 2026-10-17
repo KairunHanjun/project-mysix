@@ -217,7 +217,7 @@ public final class OnlineJukebox {
             else ((JukeboxBlockEntity) session.level.getBlockEntity(session.pos)).popOutTheItem();
             var player = session.level.getServer().getPlayerList().getPlayer(session.owner);
             if (player != null) player.sendOverlayMessage(Component.literal(
-                    "Could not play CD. Try a YouTube link. " + error.getMessage()));
+                    "Could not play CD. " + error.getMessage()));
         }
         Mysix.LOGGER.warn("CD download failed: {}", error.toString());
     }

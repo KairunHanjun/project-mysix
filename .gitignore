@@ -33,6 +33,7 @@ bin/
 
 run/
 mysix-cache/
+mysix-tools/
 logs/
 mods/
 config/

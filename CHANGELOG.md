@@ -1,3 +1,21 @@
+# Project Mysix 0.6.0 (unreleased)
+
+- Added `/mysix setup`: detects OS/CPU and installs checksum-pinned yt-dlp,
+  Deno, FFmpeg/ffprobe, and an anonymous PO-token helper in Mysix's own folder.
+- Dedicated-server setup requires console/level-4 permission; a singleplayer
+  owner can install without enabling the cheat-only download/play commands.
+- Helper dependencies use the upstream lockfile. The helper binds only to
+  localhost, is restarted when needed, and stops with the server.
+- Managed tools are selected persistently without changing system PATH;
+  the previous manual command remains saved for opting out.
+- Added `/mysix check [song or YouTube link]` to verify real server-side audio
+  retrieval and conversion independently of client playback.
+- Setup reports tool installation separately from YouTube acceptance. No account
+  login/cookies are requested; YouTube may still refuse some VPS connections.
+- Added installer/checksum/archive/permission tests and Windows/Linux setup CI.
+- Local managed-tool audio download and Minecraft Vorbis decoding passed.
+- macOS/ARM64 runtime validation and the user's actual VPS test remain pending.
+
 # Project Mysix 0.5.0 (unreleased)
 
 - Optional Visual Jukebox 1.2.0+26.3 integration with Polymer 0.18.4+26.3.
@@ -7,7 +25,7 @@
 - Added released-mod client/server presentation tests and combined-mod hook checks.
 - In-game rendering and audible multiplayer checks remain pending.
 
-# Project Mysix 0.4.0 (unreleased)
+# Project Mysix 0.4.0
 
 - Optional Sculk Radio 1.0.0+26.3 external-audio routing through its public stream API.
 - Uses connected speakers, including paths through Sculk Radio relays and antennas.

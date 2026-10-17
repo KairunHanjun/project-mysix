@@ -1,5 +1,25 @@
 # Optional integrations
 
+## Managed external tools
+
+`/mysix setup` downloads official upstream artifacts separately; these programs
+are not bundled in Mysix's JAR. `mysix-tools.json` records pinned releases, URLs,
+and SHA-256 hashes. They execute as separate processes using their own licenses:
+
+- yt-dlp 2026.08.19: https://github.com/yt-dlp/yt-dlp (see upstream licensing for
+  source and standalone binaries).
+- Deno 2.9.7: https://github.com/denoland/deno (MIT and third-party notices).
+- FFmpeg/ffprobe b6.1.1 distribution: https://github.com/eugeneware/ffmpeg-static
+  and https://ffmpeg.org. The distribution's per-platform LICENSE and README
+  are installed alongside the binaries, including its source/build references.
+- BgUtils POT Provider 2.0.2: https://github.com/Brainicism/bgutil-ytdlp-pot-provider
+  (GPL-3.0-only). Source, LICENSE, and lockfiles are retained in its installed
+  directory. Its dependencies are fetched by Deno under their upstream licenses.
+
+No endorsement or affiliation with these projects is implied.
+
+## Optional mod adapters
+
 Traveler's Backpack is developed by Tiviacz1337 and contributors and is published
 under LGPL-3.0-only: https://modrinth.com/mod/travelersbackpack
 

@@ -40,9 +40,22 @@ public final class MysixClient implements ClientModInitializer {
     static void registerCommands(CommandDispatcher<FabricClientCommandSource> dispatcher,
             BiConsumer<FabricClientCommandSource, ServerboundChatCommandPacket> sendToServer) {
         dispatcher.register(ClientCommands.literal("mysix")
-                        .requires(source -> source.getPlayer() != null && source.getPlayer()
-                                .permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
+                        .requires(source -> canSetup(source) || hasCheats(source))
+                        .then(ClientCommands.literal("setup")
+                                .requires(MysixClient::canSetup)
+                                .executes(context -> {
+                                    sendToServer.accept(context.getSource(), new ServerboundChatCommandPacket(context.getInput())); return 1;
+                                }))
+                        .then(ClientCommands.literal("check")
+                                .requires(MysixClient::hasCheats)
+                                .executes(context -> {
+                                    sendToServer.accept(context.getSource(), new ServerboundChatCommandPacket(context.getInput())); return 1;
+                                })
+                                .then(ClientCommands.argument("song", StringArgumentType.greedyString()).executes(context -> {
+                                    sendToServer.accept(context.getSource(), new ServerboundChatCommandPacket(context.getInput())); return 1;
+                                })))
                         .then(ClientCommands.literal("download")
+                                .requires(MysixClient::hasCheats)
                                 .then(ClientCommands.argument("song", StringArgumentType.greedyString())
                                         .executes(context -> {
                                             sendToServer.accept(context.getSource(),
@@ -50,15 +63,27 @@ public final class MysixClient implements ClientModInitializer {
                                             return 1;
                                         })))
                         .then(ClientCommands.literal("play")
+                                .requires(MysixClient::hasCheats)
                                 .executes(context -> play(context.getSource(), null))
                                 .then(ClientCommands.argument("videoId", StringArgumentType.word())
                                         .executes(context -> play(context.getSource(),
                                                 StringArgumentType.getString(context, "videoId")))))
-                        .then(ClientCommands.literal("stop").executes(context -> {
+                        .then(ClientCommands.literal("stop").requires(MysixClient::hasCheats).executes(context -> {
                             stop();
                             context.getSource().sendFeedback(Component.literal("Mysix playback stopped."));
                             return 1;
                         })));
+    }
+
+    private static boolean hasCheats(FabricClientCommandSource source) {
+        return source.getPlayer() != null && source.getPlayer().permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
+    }
+    private static boolean canSetup(FabricClientCommandSource source) {
+        if (source.getPlayer() == null) return false;
+        if (source.getPlayer().permissions().hasPermission(Permissions.COMMANDS_OWNER)) return true;
+        var client = source.getClient();
+        var server = client == null ? null : client.getSingleplayerServer();
+        return server != null && server.isSingleplayerOwner(source.getPlayer().nameAndId());
     }
 
     private static int play(FabricClientCommandSource source, String videoId) {
