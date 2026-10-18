@@ -1,0 +1,10 @@
+# Server setup and troubleshooting
+
+On a dedicated server, run `mysix setup` in its console, or `/mysix setup` as a level-4 operator. A singleplayer world owner can run setup without enabling cheats. Mysix detects OS/CPU, downloads checksum-pinned tools into `mysix-tools/`, installs locked helper dependencies, and starts the helper on localhost. It then tries an actual anonymous audio download; installation success and YouTube access are reported separately. First setup needs internet access, disk space, and permission to run executables and may take several minutes. No system PATH changes, administrator installation, cookies, or Google sign-in are required by the setup flow.
+
+With cheats/operator access, `/mysix check` retests retrieval and conversion; `/mysix check Artist - Title` or a YouTube link tests your choice. Normal CD use remains available in survival. Downloads and helper startup run off the Minecraft tick thread. The helper restarts when needed and shuts down with the server. `managedTools: true` in `config/mysix-download.json` selects the installed tools after restart; set it to `false` to return to your saved manual command.
+
+Managed downloads try yt-dlp's default clients first. If YouTube challenges access, returns HTTP 403, or exposes no usable format, Mysix tries the anonymous token helper within the remaining request timeout. Search selects one video before audio retrieval; retries keep that video. Per-job `mysix-cache/downloads/logs/*.route.log` files identify the route and exit status; matching `-default.stderr.log` and `-token.stderr.log` files contain yt-dlp errors. Some hosting networks can still be refused by YouTube even with both routes; setup cannot guarantee access.
+
+Automatic bundles cover Windows x64, Linux x64/ARM64 with glibc, and macOS x64/ARM64. macOS and ARM64 bundles still need runtime validation. Alpine/musl, Windows ARM64, and other platforms require manual tools. YouTube may still reject a VPS even with the helper; setup does not guarantee access.
+
