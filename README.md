@@ -6,6 +6,8 @@ A Fabric mod for **Minecraft Java 26.3** with vanilla music, YouTube song search
 
 [Download the prerelease](https://github.com/KairunHanjun/project-mysix/releases) · [Report a bug](https://github.com/KairunHanjun/project-mysix/issues) · [Release notes](CHANGELOG.md)
 
+Licensed under [MIT](LICENSE). Releases through 0.6.0 were published under CC0-1.0; those existing permissions remain valid. Third-party tools and mods retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md). This license does not grant rights to downloaded music.
+
 ## What it does
 
 - Adds **16 craftable colored CDs**, one for each dye.

@@ -1,3 +1,9 @@
+# Unreleased
+
+- Changed the repository license and mod metadata to MIT. Previously published
+  releases through 0.6.0 remain available under CC0-1.0; their permissions are
+  not revoked. Third-party licenses and rights to music are unaffected.
+
 # Project Mysix 0.6.0 (prerelease)
 
 - Added `/mysix setup`: detects OS/CPU and installs checksum-pinned yt-dlp,
