@@ -40,12 +40,28 @@ class YtDlpDownloaderTest {
         });
         var result = downloader.download("Dhyo Haw - Ada Aku Disini");
         assertEquals("ytsearch1:Dhyo Haw - Ada Aku Disini", calls.get(0).getLast());
+        assertTrue(calls.get(0).contains("--flat-playlist"));
+        assertFalse(calls.get(1).contains("--flat-playlist"));
         assertEquals(URL, calls.get(1).getLast());
         assertEquals("--", calls.get(1).get(calls.get(1).size() - 2));
         assertEquals(ID, result.videoId());
         assertEquals("Test recording", result.title());
         assertEquals(40, result.bytes());
         assertTrue(Files.isRegularFile(result.file()));
+    }
+
+    @Test void flatSearchEntryUsesUrlFieldAndPinsCanonicalVideo() throws Exception {
+        var calls = new ArrayList<List<String>>();
+        var service = new YtDlpDownloader(DownloadConfig.defaults(), directory, (args, timeout, log) -> {
+            calls.add(List.copyOf(args));
+            return args.contains("--skip-download")
+                    ? new YtDlpDownloader.ProcessResult(0, "{\"entries\":[{\"id\":\"" + ID
+                        + "\",\"title\":\"Flat result\",\"url\":\"https://youtu.be/" + ID + "\",\"duration\":219}]}", "")
+                    : file();
+        });
+        var result = service.download("Artist - Title");
+        assertEquals(219, result.durationSeconds());
+        assertEquals(URL, calls.get(1).getLast());
     }
 
     @Test void keepsExplicitManagedRuntimeAndDoesNotReplaceItsPathWithSystemDeno() throws Exception {
@@ -67,6 +83,16 @@ class YtDlpDownloaderTest {
                 new YtDlpDownloader.ProcessResult(1, "", "ERROR: [youtube] Sign in to confirm you're not a bot. Use --cookies-from-browser or --cookies https://example.com"));
         var error = assertThrows(IOException.class, () -> service.download("Artist - Title"));
         assertTrue(error.getMessage().contains("/mysix setup"));
+        assertFalse(error.getMessage().contains("--cookies"));
+    }
+
+    @Test void managedBotFailureReportsStageAndDiagnosticLocation() {
+        var config = new DownloadConfig(List.of("yt-dlp"), 90, 30, true);
+        var service = new YtDlpDownloader(config, directory, (args, timeout, log) ->
+                new YtDlpDownloader.ProcessResult(1, "", "Sign in to confirm you’re not a bot"));
+        var error = assertThrows(IOException.class, () -> service.download("Artist - Title"));
+        assertTrue(error.getMessage().contains("Song lookup:"));
+        assertTrue(error.getMessage().contains(directory.resolve("logs").toString()));
         assertFalse(error.getMessage().contains("--cookies"));
     }
 

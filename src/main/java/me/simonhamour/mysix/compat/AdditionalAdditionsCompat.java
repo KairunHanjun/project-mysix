@@ -57,6 +57,7 @@ public final class AdditionalAdditionsCompat {
             });
             var present = new HashSet<UUID>();
             for (var player : server.getPlayerList().getPlayers()) {
+                discoverCreativePocket(player);
                 var device = findPocket(player, null);
                 if (device.isEmpty()) continue;
                 present.add(player.getUUID());
@@ -116,14 +117,32 @@ public final class AdditionalAdditionsCompat {
         return pocket.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag()
                 .getStringOr("mysix_pocket_epoch", "");
     }
+    /** Creative slot updates carry client-built contents without calling server insertDisc. */
+    private static void discoverCreativePocket(ServerPlayer player) {
+        if (!player.isAlive() || !api.pocketEnabled()) return;
+        String selected = null;
+        for (var stack : pocketCandidates(player)) {
+            if (!api.isPocket(stack) || !epoch(stack).isEmpty()
+                    || !api.containsExternal(AdditionalAdditionsApi.stored(stack))) continue;
+            pocketInserted(stack, player);
+            if (selected == null) selected = epoch(stack);
+        }
+        if (selected != null) {
+            selectedPocket.put(player.getUUID(), selected);
+            player.getInventory().setChanged();
+        }
+    }
+    private static List<ItemStack> pocketCandidates(ServerPlayer player) {
+        var candidates = new ArrayList<ItemStack>();
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) candidates.add(player.getInventory().getItem(i));
+        candidates.add(player.containerMenu.getCarried());
+        return candidates;
+    }
     private static Optional<ItemStack> findPocket(ServerPlayer player, String epoch) {
         if (!player.isAlive() || !api.pocketEnabled()) return Optional.empty();
         String selected = selectedPocket.get(player.getUUID());
         if ("".equals(selected) || (epoch != null && selected != null && !epoch.equals(selected))) return Optional.empty();
-        var candidates = new ArrayList<ItemStack>();
-        for (int i = 0; i < player.getInventory().getContainerSize(); i++) candidates.add(player.getInventory().getItem(i));
-        candidates.add(player.containerMenu.getCarried());
-        return candidates.stream().filter(stack -> api.isPocket(stack) && !epoch(stack).isEmpty()
+        return pocketCandidates(player).stream().filter(stack -> api.isPocket(stack) && !epoch(stack).isEmpty()
                 && (epoch == null || epoch.equals(epoch(stack)))
                 && (selected == null || selected.equals(epoch(stack)))
                 && api.containsExternal(AdditionalAdditionsApi.stored(stack))).findFirst();

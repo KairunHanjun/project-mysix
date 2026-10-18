@@ -113,9 +113,12 @@ public final class YtDlpDownloader {
         Files.createDirectories(logs);
         var job = UUID.randomUUID().toString();
         var resolve = command();
+        // Pick one search result without requesting its player/formats yet. All
+        // audio attempts below use its canonical ID, including route fallback.
+        if (target.startsWith("ytsearch1:")) resolve.add("--flat-playlist");
         resolve.addAll(List.of("--skip-download", "--dump-single-json", "--", target));
         var metadata = runner.run(resolve, Duration.ofSeconds(config.timeoutSeconds()), logs.resolve(job + "-search"));
-        checkSuccess(metadata, "Song lookup");
+        checkSuccess(metadata, "Song lookup", logs.resolve(job + "-search"));
         String id, title, url;
         double duration;
         try {
@@ -127,11 +130,14 @@ public final class YtDlpDownloader {
             }
             id = json.get("id").getAsString();
             title = json.get("title").getAsString();
-            url = json.get("webpage_url").getAsString();
+            var page = json.has("webpage_url") && !json.get("webpage_url").isJsonNull()
+                    ? json.get("webpage_url") : json.get("url");
+            url = page.getAsString();
             duration = json.has("duration") && !json.get("duration").isJsonNull()
                     ? json.get("duration").getAsDouble() : 0;
             if (!Double.isFinite(duration) || duration < 0) duration = 0;
             if (!id.matches("[A-Za-z0-9_-]{11}") || !isYouTubeUrl(url)) throw new IllegalArgumentException("Invalid video metadata");
+            url = "https://www.youtube.com/watch?v=" + id;
         } catch (RuntimeException error) {
             throw new IOException("yt-dlp returned no valid YouTube recording", error);
         }
@@ -148,7 +154,7 @@ public final class YtDlpDownloader {
                     "-o", output.toString(), "--", url));
             try {
                 var result = runner.run(download, Duration.ofSeconds(config.timeoutSeconds()), logs.resolve(job + "-download-" + attempt));
-                checkSuccess(result, "Audio download");
+                checkSuccess(result, "Audio download", logs.resolve(job + "-download-" + attempt));
                 var line = result.stdout().lines().filter(s -> s.startsWith("MYSIX_FILE:")).findFirst()
                         .orElseThrow(() -> new IOException("yt-dlp did not report a completed audio file"));
                 var file = Path.of(line.substring("MYSIX_FILE:".length())).toAbsolutePath().normalize();
@@ -169,12 +175,12 @@ public final class YtDlpDownloader {
         throw new IOException("Download failed after retrying the same video: " + failure.getMessage(), failure);
     }
 
-    private void checkSuccess(ProcessResult result, String stage) throws IOException {
+    private void checkSuccess(ProcessResult result, String stage, Path log) throws IOException {
         if (result.exitCode() != 0) {
             String diagnostic = result.stderr().toLowerCase(Locale.ROOT);
             if (diagnostic.contains("confirm you’re not a bot") || diagnostic.contains("confirm you're not a bot")) {
                 throw new IOException(config.managedTools()
-                        ? "YouTube refused anonymous access. Tools are installed; contact the server owner."
+                        ? stage + ": YouTube refused anonymous access. Diagnostics: " + log
                         : "YouTube challenged this server. Its owner can run /mysix setup, then /mysix check.");
             }
             var detail = result.stderr().lines().filter(s -> s.startsWith("ERROR:")).reduce((a, b) -> b)

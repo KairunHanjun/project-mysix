@@ -1,4 +1,4 @@
-# Project Mysix 0.6.0 (unreleased)
+# Project Mysix 0.6.0 (prerelease)
 
 - Added `/mysix setup`: detects OS/CPU and installs checksum-pinned yt-dlp,
   Deno, FFmpeg/ffprobe, and an anonymous PO-token helper in Mysix's own folder.
@@ -14,9 +14,18 @@
   login/cookies are requested; YouTube may still refuse some VPS connections.
 - Added installer/checksum/archive/permission tests and Windows/Linux setup CI.
 - Local managed-tool audio download and Minecraft Vorbis decoding passed.
-- macOS/ARM64 runtime validation and the user's actual VPS test remain pending.
+- Managed downloads now try default YouTube clients before the token-helper
+  fallback, with separate route diagnostics and a shared per-request time budget.
+- Search pins one video before audio retrieval; retries do not select a substitute.
+- Fixed Creative Pocket Jukebox playback when inventory synchronization bypasses
+  the server's normal disc insertion hook. Added inventory/cursor regression tests.
+- The project owner confirmed YouTube playback on a dedicated VPS and Creative
+  Pocket Jukebox playback after these fixes.
+- Includes the Visual Jukebox integration described below for 0.5.0.
+- macOS/ARM64 runtime validation, longer multiplayer sessions, and remaining
+  in-game optional integration checks are pending; this remains a prerelease.
 
-# Project Mysix 0.5.0 (unreleased)
+# Project Mysix 0.5.0 (included in 0.6.0)
 
 - Optional Visual Jukebox 1.2.0+26.3 integration with Polymer 0.18.4+26.3.
 - External Mysix CDs use their actual item/color/name in the display.

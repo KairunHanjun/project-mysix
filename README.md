@@ -46,11 +46,13 @@ On a dedicated server, run `mysix setup` in its console, or `/mysix setup` as a 
 
 With cheats/operator access, `/mysix check` retests retrieval and conversion; `/mysix check Artist - Title` or a YouTube link tests your choice. Normal CD use remains available in survival. Downloads and helper startup run off the Minecraft tick thread. The helper restarts when needed and shuts down with the server. `managedTools: true` in `config/mysix-download.json` selects the installed tools after restart; set it to `false` to return to your saved manual command.
 
+Managed downloads try yt-dlp's default clients first. If YouTube challenges access, returns HTTP 403, or exposes no usable format, Mysix tries the anonymous token helper within the remaining request timeout. Search selects one video before audio retrieval; retries keep that video. Per-job `mysix-cache/downloads/logs/*.route.log` files identify the route and exit status; matching `-default.stderr.log` and `-token.stderr.log` files contain yt-dlp errors. Some hosting networks can still be refused by YouTube even with both routes; setup cannot guarantee access.
+
 Automatic bundles cover Windows x64, Linux x64/ARM64 with glibc, and macOS x64/ARM64. macOS and ARM64 bundles still need runtime validation. Alpine/musl, Windows ARM64, and other platforms require manual tools. YouTube may still reject a VPS even with the helper; setup does not guarantee access. In 0.4.0–0.5.0, tools must be installed manually.
 
 ## Current limits
 
-This is an **early prerelease**. External songs finish downloading before playback; first playback can take time. The limit is **eight active online jukeboxes** and **30 MiB per recording**. Cache files are retained. After a chunk unload or server restart, eject and reinsert the CD to resume. Live multiplayer testing is still pending.
+This is a **prerelease**. Dedicated-server YouTube playback and Creative Pocket Jukebox playback have been confirmed by the project owner in game. Longer multiplayer sessions and the remaining optional integration/platform checks are still needed before a stable release. External songs finish downloading before playback; first playback can take time. The limit is **eight active online jukeboxes** and **30 MiB per recording**. Cache files are retained. After a chunk unload or server restart, eject and reinsert the CD to resume.
 
 ## Backpack compatibility (0.2.0)
 
@@ -64,18 +66,18 @@ For a development launch with Backpack and its dependency included, run `.\gradl
 
 Install **Additional Additions Fabric 10.0.14 for 26.3** on client and server. Put renamed Mysix CDs in an Album, then insert it into a jukebox or Pocket Jukebox. A single Mysix CD also works in the Pocket Jukebox. Albums play tracks in their stored order; pocket playback is audible only to its holder. Removing the media stops playback. Resolved recordings stay on the nested CDs and reuse the server cache.
 
-On failure, a placed jukebox ejects the whole album; a Pocket Jukebox stops and keeps its contents. Reinsert to restart. External playlist tracks need a known duration. Other Additional Additions versions leave the adapter disabled. Real-mod client/server tests pass; audible playback, the full inventory UI, and live multiplayer still need an in-game check.
+On failure, a placed jukebox ejects the whole album; a Pocket Jukebox stops and keeps its contents. Reinsert to restart. External playlist tracks need a known duration. Other Additional Additions versions leave the adapter disabled. Real-mod client/server tests pass, and the project owner confirmed Creative Pocket Jukebox playback in game. The complete mixed-album UI flow still needs an in-game check.
 
 Development launch: `.\gradlew.bat runClient -PwithAdditions`. Add `-PwithBackpack` to include both mods. Neither optional mod is bundled with Mysix.
 
 ## What's next
 
-1. Validate playback and synchronization with multiple players on a dedicated server.
+1. Extend dedicated-server testing to longer sessions, reconnects, and simultaneous playback.
 2. Improve first-playback speed and progress feedback.
 3. Add cache cleanup that accounts for CDs being moved, stored, or destroyed.
 4. Validate optional integrations together in game. Sophisticated Backpacks porting is paused.
 
-The public 0.4.0 prerelease includes Backpack, Additional Additions, and Sculk Radio support. Visual Jukebox (0.5.0) and automatic setup (0.6.0) are currently unreleased.
+The 0.6.0 prerelease includes all four optional integrations, automatic server setup, anonymous download fallback, and the Creative Pocket Jukebox fix.
 
 ## Sculk Radio compatibility (0.4.0)
 

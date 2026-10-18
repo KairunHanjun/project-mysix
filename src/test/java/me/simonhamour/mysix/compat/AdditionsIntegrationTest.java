@@ -237,4 +237,66 @@ class AdditionsIntegrationTest {
             assertEquals(1, sources.size());
         }
     }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void creativeSyncedPocketStartsWithoutServerInsertionAndKeepsPlayingAfterStackCopy(boolean carried) {
+        var world = new World(ItemStack.EMPTY);
+        var pocket = new ItemStack(pocketItem);
+        // Creative synchronizes the result of client inventory editing. It does
+        // not invoke the server insertDisc hook that assigns our playback epoch.
+        AdditionalAdditionsApi.store(pocket, BackpackPlaybackControllerTest.disc());
+        assertFalse(pocket.has(DataComponents.CUSTOM_DATA));
+        var current = new java.util.concurrent.atomic.AtomicReference<>(pocket);
+        var inventory = mock(net.minecraft.world.entity.player.Inventory.class);
+        when(world.player.getInventory()).thenReturn(inventory);
+        when(inventory.getContainerSize()).thenReturn(1);
+        when(inventory.getItem(0)).thenAnswer(call -> carried ? ItemStack.EMPTY : current.get());
+        world.player.containerMenu = mock(net.minecraft.world.inventory.AbstractContainerMenu.class);
+        when(world.player.containerMenu.getCarried()).thenAnswer(call -> carried ? current.get() : ItemStack.EMPTY);
+        var sources = new ArrayList<OnlineJukebox.PersonalSource>();
+        try (var audio = mockStatic(OnlineJukebox.class)) {
+            audio.when(() -> OnlineJukebox.tryPlayPersonal(eq(world.player), any())).thenAnswer(call -> {
+                sources.add(call.getArgument(1)); return true;
+            });
+            var ticks = net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.invoker();
+            ticks.onEndTick(world.server); ticks.onEndTick(world.server);
+            assertEquals(1, sources.size(), "Creative insertion must start one server-owned session");
+            var source = sources.getFirst(); assertTrue(source.personal()); assertTrue(source.isActive());
+            assertFalse(pocket.get(DataComponents.CUSTOM_DATA).copyTag().getStringOr("mysix_pocket_epoch", "").isEmpty());
+            current.set(pocket.copy());
+            ticks.onEndTick(world.server);
+            assertEquals(1, sources.size()); assertTrue(source.isActive());
+            CdRecording.remember(source.disc(), source.disc().getCustomName().getString(), "Yikl044w8d0");
+            source.save();
+            assertEquals("Yikl044w8d0", CdRecording.pinnedId(AdditionalAdditionsApi.stored(current.get())).orElseThrow());
+            current.get().remove(DataComponents.CONTAINER);
+            ticks.onEndTick(world.server);
+            assertFalse(source.isActive());
+            source.save(); assertFalse(current.get().has(DataComponents.CONTAINER));
+            assertEquals(1, sources.size());
+        }
+    }
+
+    @Test void discoveringSeveralCreativePocketsDoesNotSwitchBetweenThemEveryTick() {
+        var world = new World(ItemStack.EMPTY);
+        var first = new ItemStack(pocketItem); var second = new ItemStack(pocketItem);
+        AdditionalAdditionsApi.store(first, BackpackPlaybackControllerTest.disc());
+        AdditionalAdditionsApi.store(second, BackpackPlaybackControllerTest.disc());
+        var inventory = mock(net.minecraft.world.entity.player.Inventory.class);
+        when(world.player.getInventory()).thenReturn(inventory);
+        when(inventory.getContainerSize()).thenReturn(2);
+        when(inventory.getItem(0)).thenReturn(first); when(inventory.getItem(1)).thenReturn(second);
+        world.player.containerMenu = mock(net.minecraft.world.inventory.AbstractContainerMenu.class);
+        when(world.player.containerMenu.getCarried()).thenReturn(ItemStack.EMPTY);
+        var sources = new ArrayList<OnlineJukebox.PersonalSource>();
+        try (var audio = mockStatic(OnlineJukebox.class)) {
+            audio.when(() -> OnlineJukebox.tryPlayPersonal(eq(world.player), any())).thenAnswer(call -> {
+                sources.add(call.getArgument(1)); return true;
+            });
+            var ticks = net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.invoker();
+            ticks.onEndTick(world.server); ticks.onEndTick(world.server); ticks.onEndTick(world.server);
+            assertEquals(1, sources.size()); assertTrue(sources.getFirst().isActive());
+        }
+    }
 }

@@ -65,16 +65,21 @@ public final class ManagedTools implements AutoCloseable {
         if (!installed()) throw new IOException("Managed tools are incomplete. Server owner: run /mysix setup");
         var command = new ArrayList<>(List.of(tool("yt-dlp").toString(), "--ffmpeg-location", bin.toString(),
                 "--no-js-runtimes", "--js-runtimes", "deno:" + tool("deno"),
-                "--no-plugin-dirs", "--plugin-dirs", root.resolve("plugins").toString(),
-                "--extractor-args", "youtube:player_client=mweb"));
+                "--no-plugin-dirs"));
         var managed = new DownloadConfig(command, config.timeoutSeconds(), config.maxFileMiB(), true);
-        return new YtDlpDownloader(managed, directory, (args, timeout, log) -> {
+        return new YtDlpDownloader(managed, directory, new AnonymousYouTubeRunner(
+                (args, timeout, log) -> ToolProcess.run(args, root, environment, timeout, log),
+                (args, timeout, log) -> {
+            long started = System.nanoTime();
             ensureProvider();
+            var remaining = timeout.minusNanos(System.nanoTime() - started);
+            if (remaining.isNegative() || remaining.isZero()) throw new IOException("Token helper startup exhausted the request timeout");
             var actual = new ArrayList<>(args);
-            actual.addAll(actual.indexOf("--"), List.of("--extractor-args",
+            actual.addAll(actual.indexOf("--"), List.of("--plugin-dirs", root.resolve("plugins").toString(),
+                    "--extractor-args", "youtube:player_client=mweb", "--extractor-args",
                     "youtubepot-bgutilhttp:base_url=http://127.0.0.1:" + port));
-            return ToolProcess.run(actual, root, environment, timeout, log);
-        });
+            return ToolProcess.run(actual, root, environment, remaining, log);
+        }));
     }
 
     public synchronized void ensureProvider() throws IOException, InterruptedException {
