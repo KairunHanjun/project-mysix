@@ -12,6 +12,8 @@ The Forge build shares the core Java sources and resources with Fabric. The `for
 
 Forge's version is stored in `forge/gradle.properties` as `forge_version`. Its initial `0.6.0` matches Fabric's feature baseline. Tags such as `forge-v0.6.0` and `forge-v0.6.1` belong to Forge; existing `v*` tags belong to Fabric. Bug-fix versions advance independently, so fixing Forge does not bump or replace Fabric's release. A future Forge feature baseline can align with the equivalent Fabric version deliberately.
 
+Both loaders follow the [release versioning policy](VERSIONING.md): bug fixes use `0.6.x`, feature upgrades advance to `0.7.0` and beyond, and the first complete stable release is `1.0.0`.
+
 ## Build and test
 
 From the repository root, with Java 25 selected:
