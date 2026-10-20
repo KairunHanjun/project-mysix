@@ -5,10 +5,8 @@ import java.util.Map;
 import java.util.UUID;
 import me.simonhamour.mysix.network.AudioTransfer;
 import me.simonhamour.mysix.network.JukeboxAudioPayload;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
+import me.simonhamour.mysix.platform.MysixClientPlatform;
 import net.minecraft.client.sounds.SoundEngine;
 import net.minecraft.network.chat.Component;
 import net.minecraft.client.resources.sounds.SoundInstance;
@@ -21,13 +19,10 @@ public final class JukeboxPlayback {
     private JukeboxPlayback() {}
 
     public static void initialize() {
-        ClientPlayNetworking.registerGlobalReceiver(JukeboxAudioPayload.TYPE,
-                (packet, context) -> receive(context.client(), packet));
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+        MysixClientPlatform.initializeAudio(JukeboxPlayback::receive, client -> {
             for (var session : sessions.values()) stop(client, session);
             sessions.clear();
-        });
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+        }, client -> {
             var iterator = sessions.values().iterator();
             while (iterator.hasNext()) {
                 var session = iterator.next();

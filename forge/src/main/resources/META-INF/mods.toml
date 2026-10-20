@@ -1,0 +1,33 @@
+modLoader="javafml"
+loaderVersion="[66,)"
+license="MIT"
+issueTrackerURL="https://github.com/KairunHanjun/project-mysix/issues"
+
+[[mods]]
+modId="mysix"
+version="${version}"
+displayName="Project Mysix"
+authors="SimonHamour"
+displayURL="https://github.com/KairunHanjun/project-mysix"
+description='''Craft colored CDs, rename them, and play vanilla or downloaded music in multiplayer jukeboxes.'''
+
+[[dependencies.mysix]]
+modId="forge"
+mandatory=true
+versionRange="[66.0.13,67)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.mysix]]
+modId="minecraft"
+mandatory=true
+versionRange="[26.3,26.4)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.mysix]]
+modId="jukebox_playlists"
+mandatory=false
+versionRange="[1.0.1]"
+ordering="AFTER"
+side="BOTH"

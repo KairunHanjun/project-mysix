@@ -2,7 +2,7 @@
 
 **Craft a CD, rename it, and play your music in Minecraft.**
 
-Mysix is a Fabric mod that brings vanilla music, YouTube song search, and multiplayer jukebox playback to Minecraft Java Edition.
+Mysix brings vanilla music, YouTube song search, and multiplayer jukebox playback to Minecraft Java Edition. Fabric releases are available, with a separate Forge port in testing.
 
 [Download](https://github.com/KairunHanjun/project-mysix/releases) · [Report a bug](https://github.com/KairunHanjun/project-mysix/issues) · [Changelog](CHANGELOG.md)
 
@@ -17,13 +17,13 @@ Mysix is a Fabric mod that brings vanilla music, YouTube song search, and multip
 
 ## Install
 
-1. Choose a release matching your Minecraft version. Its release notes list the required Java, Fabric Loader, and Fabric API versions.
-2. Install the regular Mysix JAR and Fabric API on **the server and every client**. The `-sources.jar` is for developers.
+1. Choose a build matching your Minecraft version and loader. Its release notes list the required Java and loader versions. For the Forge development build, see the [Forge guide](docs/FORGE.md).
+2. Install the regular Mysix JAR on **the server and every client** using the same loader. Fabric builds also require Fabric API; Forge builds do not. The `-sources.jar` is for developers.
 3. Start Minecraft or the server, then run **`/mysix setup`**. In the dedicated-server console, use `mysix setup` without the slash.
 
 Setup downloads and manages the server's required tools. Players need no external tools or Google login. It may take several minutes and reports installation and YouTube access separately. A dedicated server requires console access or a level-4 operator; a singleplayer world owner can run setup without enabling cheats.
 
-See the [setup guide](docs/SETUP.md) for supported operating systems, manual tools, configuration, and troubleshooting. Forge and Paper are not currently supported.
+See the [setup guide](docs/SETUP.md) for supported operating systems, manual tools, configuration, and troubleshooting. Paper and NeoForge are not currently supported.
 
 ## Craft and play
 
@@ -46,7 +46,7 @@ Rename the CD in an anvil, then insert it into an empty jukebox:
 
 If search picks the wrong recording, rename the CD to a direct YouTube link. Normal CD use works in survival and needs no commands.
 
-## Optional integrations
+## Optional integrations (Fabric)
 
 | Mod | What you can do |
 |---|---|
@@ -55,7 +55,11 @@ If search picks the wrong recording, rename the CD to a direct YouTube link. Nor
 | Sculk Radio | Send external jukebox music through connected speakers instead of the source jukebox. |
 | Visual Jukebox | Display the actual colored CD and animate it during playback. |
 
-These mods are optional and installed separately. Check the [compatibility guide](docs/COMPATIBILITY.md) for supported mod versions, dependencies, and usage instructions.
+These mods are optional and installed separately. Check the [compatibility guide](docs/COMPATIBILITY.md) for supported mod versions, dependencies, and usage instructions. These adapters are not included in the Forge port; see its [compatibility notes](docs/FORGE.md#optional-mods).
+
+**Forge:** [Jukebox Playlists](https://www.curseforge.com/minecraft/mc-mods/jukebox-playlists) supports chest playlists mixing vanilla and Mysix CDs, with automatic downloading and transitions based on the actual song duration. See the [Forge guide](docs/FORGE.md#jukebox-playlists) for the supported build and installation.
+
+[Sound Physics Remastered](https://modrinth.com/mod/sound-physics-remastered) can process Forge jukebox playback through its normal sound hooks. Enable its music-disc processing setting as described in the [Sound Physics setup notes](docs/FORGE.md#sound-physics-remastered).
 
 ## Troubleshooting and limits
 

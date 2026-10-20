@@ -20,6 +20,25 @@ No endorsement or affiliation with these projects is implied.
 
 ## Optional mod adapters
 
+Sound Physics Remastered is developed by Sonic Ether, vlad2305m, Max Henkel,
+Saint and contributors under GPL-3.0-only:
+https://github.com/henkelmax/sound-physics-remastered
+
+Mysix uses Minecraft's normal positional audio channels, which Sound Physics
+already processes. Its Forge 1.5.1+26.3 binary is checksum-pinned for optional
+development launches and combined compatibility tests. No upstream code, assets
+or JAR are bundled in Mysix. Players install it separately and choose their own
+sound-physics settings. No endorsement by its authors is implied.
+
+Jukebox Playlists is developed by EyeCrasher07 and contributors under GPL-3.0-only:
+https://github.com/EyeCrasher07/Jukebox-Playlists
+
+Mysix's independently written Forge adapter targets version 1.0.1 for Minecraft
+26.3. Upstream source is consulted to identify its playback API; no upstream code,
+assets or JAR are bundled in Mysix. The checksum-pinned official JAR is a build
+dependency and is loaded at runtime only for explicitly enabled development runs
+and optional integration tests. Players install it separately.
+
 Traveler's Backpack is developed by Tiviacz1337 and contributors and is published
 under LGPL-3.0-only: https://modrinth.com/mod/travelersbackpack
 

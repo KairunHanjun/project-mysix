@@ -75,7 +75,6 @@ public final class DownloadedSound extends AbstractSoundInstance {
         return soundEvent;
     }
 
-    @Override
     public CompletableFuture<AudioStream> getAudioStream(SoundBufferLibrary library,
             Identifier id, boolean repeatInstantly) {
         return CompletableFuture.supplyAsync(() -> {
@@ -98,5 +97,10 @@ public final class DownloadedSound extends AbstractSoundInstance {
                 throw new CompletionException(error);
             }
         });
+    }
+
+    /** Forge's streaming hook; Fabric calls getAudioStream directly. */
+    public CompletableFuture<AudioStream> getStream(SoundBufferLibrary library, Sound descriptor, boolean looping) {
+        return getAudioStream(library, descriptor.getPath(), looping);
     }
 }

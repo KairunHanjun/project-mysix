@@ -4,12 +4,10 @@ import java.nio.file.Files;
 import java.util.*;
 import java.util.function.Consumer;
 import me.simonhamour.mysix.Mysix;
+import me.simonhamour.mysix.platform.MysixPlatform;
 import me.simonhamour.mysix.download.DownloadCommands;
 import me.simonhamour.mysix.download.YtDlpDownloader.DownloadResult;
 import me.simonhamour.mysix.network.JukeboxAudioPayload;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -54,7 +52,7 @@ public final class OnlineJukebox {
     private final Map<UUID, Session> sessions = new LinkedHashMap<>();
 
     public OnlineJukebox(Downloads downloads, Transport transport) {
-        this(downloads, transport, me.simonhamour.mysix.compat.SculkRadioCompat::open);
+        this(downloads, transport, MysixPlatform::openRoute);
     }
 
     public OnlineJukebox(Downloads downloads, Transport transport, Routes routes) {
@@ -64,19 +62,19 @@ public final class OnlineJukebox {
     }
 
     public static void initialize() {
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> active = new OnlineJukebox(
+        MysixPlatform.onServerStarted(server -> active = new OnlineJukebox(
                 DownloadCommands::downloadAsync, new Transport() {
                     public boolean supports(ServerPlayer player) {
-                        return ServerPlayNetworking.canSend(player, JukeboxAudioPayload.TYPE);
+                        return MysixPlatform.canSend(player);
                     }
                     public void send(ServerPlayer player, JukeboxAudioPayload packet) {
-                        ServerPlayNetworking.send(player, packet);
+                        MysixPlatform.send(player, packet);
                     }
                 }));
-        ServerTickEvents.END_SERVER_TICK.register(server -> {
+        MysixPlatform.onServerTick(server -> {
             if (active != null) active.tick(server);
         });
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+        MysixPlatform.onServerStopping(server -> {
             if (active != null) active.clear();
             active = null;
         });
@@ -85,6 +83,52 @@ public final class OnlineJukebox {
     public static boolean tryInsert(ServerPlayer player, ServerLevel level, BlockPos pos, ItemStack held) {
         if (active == null) return false;
         active.insert(player, level, pos, held);
+        return true;
+    }
+
+    public static boolean hasSessionAt(JukeboxBlockEntity box) {
+        return active != null && active.hasSession(box);
+    }
+
+    public static boolean tryPlayPlaced(ServerPlayer player, JukeboxBlockEntity box) {
+        return active != null && active.playPlaced(player, box, true);
+    }
+
+    public static void requireDurationAt(JukeboxBlockEntity box) {
+        if (active != null) active.requireDuration(box);
+    }
+
+    /** Includes loading sessions, so automation must not advance while a download is pending. */
+    public boolean hasSession(JukeboxBlockEntity box) {
+        return sessions.values().stream().anyMatch(s -> s.personal == null && s.level == box.getLevel()
+                && s.pos.equals(box.getBlockPos()) && s.disc == box.getTheItem());
+    }
+
+    public void requireDuration(JukeboxBlockEntity box) {
+        sessions.values().stream().filter(s -> s.personal == null && s.level == box.getLevel()
+                && s.pos.equals(box.getBlockPos()) && s.disc == box.getTheItem())
+                .toList().forEach(s -> {
+                    s.needsDuration = true;
+                    if (s.result != null && (!Double.isFinite(s.result.durationSeconds()) || s.result.durationSeconds() <= 0)) {
+                        fail(s, new java.io.IOException("This recording has no duration and cannot be used in a playlist"));
+                    }
+                });
+    }
+
+    /** Starts a disc already inserted by server automation; never copies or consumes another item. */
+    public boolean playPlaced(ServerPlayer player, JukeboxBlockEntity box, boolean needsDuration) {
+        if (!(box.getLevel() instanceof ServerLevel level) || box.getTheItem().isEmpty()) return false;
+        if (hasSession(box)) return true;
+        var disc = box.getTheItem();
+        if (sessions.size() >= 8 || disc.getCustomName() == null || !transport.supports(player)) {
+            box.popOutTheItem();
+            player.sendOverlayMessage(Component.literal("Cannot play CD: Mysix is required on the client, or too many jukeboxes are active."));
+            return false;
+        }
+        var session = new Session(level, box.getBlockPos().immutable(), disc, player.getUUID());
+        session.needsDuration = needsDuration;
+        sessions.put(session.id, session);
+        load(session, player, disc.getCustomName().getString());
         return true;
     }
 
@@ -157,15 +201,7 @@ public final class OnlineJukebox {
                 || !box.getTheItem().isEmpty() || held.isEmpty()) return;
         var disc = held.split(1);
         box.setTheItem(disc);
-        if (sessions.size() >= 8 || disc.getCustomName() == null || !transport.supports(player)) {
-            box.popOutTheItem();
-            player.sendOverlayMessage(Component.literal("Cannot play CD: Mysix is required on the client, or too many jukeboxes are active."));
-            return;
-        }
-        String query = disc.getCustomName().getString();
-        var session = new Session(level, pos.immutable(), disc, player.getUUID());
-        sessions.put(session.id, session);
-        load(session, player, query);
+        playPlaced(player, box, false);
     }
 
     private void load(Session session, ServerPlayer player, String query) {
@@ -185,6 +221,10 @@ public final class OnlineJukebox {
                 byte[] audio = Files.readAllBytes(result.file());
                 server.execute(() -> {
                     if (sessions.get(session.id) != session || !stillInserted(session)) return;
+                    if (session.needsDuration && (!Double.isFinite(result.durationSeconds()) || result.durationSeconds() <= 0)) {
+                        fail(session, new java.io.IOException("This recording has no duration and cannot be used in a playlist"));
+                        return;
+                    }
                     session.result = result;
                     session.audio = audio;
                     CdRecording.remember(session.disc, query, result.videoId());
@@ -351,6 +391,7 @@ public final class OnlineJukebox {
         PersonalSource personal;
         Route route;
         ServerPlayer personalPlayer;
+        boolean needsDuration;
         Session(ServerLevel level, BlockPos pos, ItemStack disc, UUID owner) {
             this.level = level; this.pos = pos; this.disc = disc; this.owner = owner;
         }

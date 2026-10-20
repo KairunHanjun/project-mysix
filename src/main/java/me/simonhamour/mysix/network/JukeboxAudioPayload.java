@@ -2,7 +2,7 @@ package me.simonhamour.mysix.network;
 
 import java.util.UUID;
 import me.simonhamour.mysix.Mysix;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import me.simonhamour.mysix.platform.MysixPlatform;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -52,7 +52,7 @@ public record JukeboxAudioPayload(UUID session, int kind, Identifier dimension, 
     }
 
     public static void register() {
-        PayloadTypeRegistry.clientboundPlay().register(TYPE, CODEC);
+        MysixPlatform.registerAudio();
     }
 
     @Override public Type<JukeboxAudioPayload> type() { return TYPE; }

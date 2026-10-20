@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "minVersion": "0.8.7",
+  "package": "me.simonhamour.mysix.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": ["AnvilMenuMixin", "PlaylistTickerMixin", "PlaylistDiscMixin", "PlaylistItemMixin"],
+  "client": ["ForgeSoundEngineMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

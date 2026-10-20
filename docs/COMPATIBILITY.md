@@ -1,5 +1,7 @@
 # Optional integrations
 
+This guide covers **Fabric integrations**. For the separate Forge port, see its [compatibility notes](FORGE.md#optional-mods).
+
 Install optional mods separately on the server and clients, with their required dependencies. Mysix targets the versions below; unsupported versions leave the relevant adapter disabled. Development commands assume the repository root as the working directory.
 
 ## Traveler's Backpack

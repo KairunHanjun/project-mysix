@@ -1,0 +1,144 @@
+import java.security.MessageDigest
+
+plugins {
+    id 'java'
+    id 'net.minecraftforge.gradle' version '7.0.23'
+}
+
+def sharedProperties = new Properties()
+file('../gradle.properties').withInputStream { sharedProperties.load(it) }
+version = sharedProperties.getProperty('version') + '-forge-dev'
+group = sharedProperties.getProperty('group')
+base.archivesName = 'project-mysix-forge'
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    withSourcesJar()
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.forgeMaven
+    maven fg.minecraftLibsMaven
+    mavenCentral()
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+    ivy {
+        name = 'jukeboxPlaylistsRelease'
+        url = 'https://github.com/EyeCrasher07/Jukebox-Playlists/releases/download/v1.0.1'
+        patternLayout { artifact '[artifact]-[revision].[ext]' }
+        metadataSources { artifact() }
+        content { includeGroup 'dev.eyecrasher' }
+    }
+}
+
+configurations {
+    playlistMod { transitive = false }
+    soundPhysicsMod { transitive = false }
+}
+
+dependencies {
+    implementation minecraft.dependency('net.minecraftforge:forge:26.3-66.0.13')
+    testImplementation platform('org.junit:junit-bom:5.13.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    playlistMod 'dev.eyecrasher:jukebox-playlists-forge-26.3:1.0.1@jar'
+    compileOnly files(configurations.playlistMod)
+    if (providers.gradleProperty('playlistCompat').isPresent()) runtimeOnly files(configurations.playlistMod)
+    soundPhysicsMod 'maven.modrinth:qyVF9oeo:9fsEYAXC'
+    if (providers.gradleProperty('soundPhysicsCompat').isPresent()) runtimeOnly files(configurations.soundPhysicsMod)
+}
+
+def verifyPlaylist = tasks.register('verifyPlaylist') {
+    def artifacts = configurations.playlistMod
+    inputs.files(artifacts)
+    doLast {
+        def jar = artifacts.singleFile
+        def hash = MessageDigest.getInstance('SHA-256').digest(jar.bytes).encodeHex().toString()
+        if (hash != 'c1afd35cd8cbe0d33b7b95c0fc2fbcdd36914e418f57109bc7d84b39c7385fe1') {
+            throw new GradleException('Jukebox Playlists 1.0.1 checksum mismatch')
+        }
+    }
+}
+tasks.named('compileJava') { dependsOn verifyPlaylist }
+
+def verifySoundPhysics = tasks.register('verifySoundPhysics') {
+    def artifacts = configurations.soundPhysicsMod
+    inputs.files(artifacts)
+    doLast {
+        def hash = MessageDigest.getInstance('SHA-256').digest(artifacts.singleFile.bytes).encodeHex().toString()
+        if (hash != 'f0c57b910a417607f0cd6da8d62390a769cfe610f7c5c746423443060e7cd6be') {
+            throw new GradleException('Sound Physics Remastered Forge 1.5.1+26.3 checksum mismatch')
+        }
+    }
+}
+if (providers.gradleProperty('soundPhysicsCompat').isPresent()) {
+    tasks.named('compileJava') { dependsOn verifySoundPhysics }
+}
+
+def sharedSources = tasks.register('syncSharedSources', Sync) {
+    from('../src/main/java') {
+        exclude '**/Mysix.java', '**/ModItems.java', '**/platform/**', '**/compat/**'
+    }
+    from('../src/client/java') {
+        exclude '**/MysixClient.java', '**/platform/**', '**/compat/**'
+    }
+    into layout.buildDirectory.dir('generated/sources/shared')
+}
+sourceSets.main.java.srcDir(sharedSources)
+sourceSets.main.resources {
+    srcDir 'src/gametest/resources'
+    srcDir '../src/main/resources'
+    exclude 'fabric.mod.json', 'mysix.mixins.json', 'mysix.travelers.mixins.json', 'mysix.additions.mixins.json', 'mysix.visual.mixins.json'
+}
+def sharedTests = tasks.register('syncSharedTests', Sync) {
+    from('../src/test/java') {
+        include '**/YtDlpDownloaderTest.java', '**/ToolInstallerTest.java', '**/AnonymousYouTubeRunnerTest.java', '**/AudioTransferTest.java'
+    }
+    into layout.buildDirectory.dir('generated/sources/tests')
+}
+sourceSets.test.java.srcDir(sharedTests)
+sourceSets.test.resources {
+    srcDir '../src/test/resources'
+    exclude 'META-INF/services/**'
+}
+test { useJUnitPlatform() }
+
+minecraft {
+    runs {
+        configureEach {
+            workingDir = layout.projectDirectory.dir('run')
+            args '--mixin.config=mysix.forge.mixins.json'
+            systemProperty 'eventbus.api.strictRuntimeChecks', 'true'
+            systemProperty 'forge.enabledGameTestNamespaces', 'mysix'
+        }
+        register('client')
+        register('server') { args '--nogui' }
+        // Client-side transformation checks without constructing Minecraft or opening a window.
+        register('clientData') {
+            args '--mod', 'mysix', '--output', layout.buildDirectory.dir('audio-check-data').get().asFile.absolutePath
+            systemProperty 'mysix.soundPhysicsCheck', 'true'
+            systemProperty 'mysix.audioFixture', file('../src/test/resources/assets/mysix/sounds/download_test.ogg').absolutePath
+            systemProperty 'mysix.audioCheckReport', layout.buildDirectory.file('sound-physics-check.txt').get().asFile.absolutePath
+        }
+        register('gameTestServer') {
+            args '--tests', providers.gradleProperty('playlistCompat').isPresent() ? 'mysix_playlist:*' : 'mysix:*',
+                    '--report', providers.gradleProperty('playlistCompat').isPresent() ? 'mysix-playlist-results.xml' : 'mysix-gametest-results.xml'
+        }
+    }
+}
+
+def modVersion = project.version.toString()
+processResources {
+    inputs.property 'version', modVersion
+    filesMatching('META-INF/mods.toml') { expand(version: modVersion) }
+}
+tasks.withType(Jar).configureEach {
+    from('../LICENSE', '../THIRD_PARTY_NOTICES.md')
+    manifest.attributes('MixinConfigs': 'mysix.forge.mixins.json')
+}
+// Test datapacks are available to dev runs, but are not part of the playable mod.
+tasks.named('jar', Jar) { exclude 'data/mysix/test_instance/**', 'data/mysix_playlist/**' }
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }

@@ -7,9 +7,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import me.simonhamour.mysix.Mysix;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.loader.api.FabricLoader;
+import me.simonhamour.mysix.platform.MysixPlatform;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.permissions.Permissions;
@@ -49,7 +47,7 @@ public final class DownloadCommands {
     }
 
     public static void initialize() {
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+        MysixPlatform.onServerStarted(server -> {
             worker = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS,
                     new ArrayBlockingQueue<>(4), task -> {
                         var thread = new Thread(task, "mysix-download");
@@ -57,18 +55,17 @@ public final class DownloadCommands {
                         return thread;
                     });
             try {
-                var loader = FabricLoader.getInstance();
-                var config = DownloadConfig.load(loader.getConfigDir().resolve("mysix-download.json"));
-                Path directory = loader.getGameDir().resolve("mysix-cache/downloads");
+                var config = DownloadConfig.load(MysixPlatform.configDirectory().resolve("mysix-download.json"));
+                Path directory = MysixPlatform.gameDirectory().resolve("mysix-cache/downloads");
                 if (config.managedTools()) {
-                    managed = new ManagedTools(loader.getGameDir());
+                    managed = new ManagedTools(MysixPlatform.gameDirectory());
                     downloader = managed.downloader(config, directory);
                 } else downloader = new YtDlpDownloader(config, directory);
             } catch (Exception error) {
                 Mysix.LOGGER.error("Mysix downloader unavailable", error);
             }
         });
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+        MysixPlatform.onServerStopping(server -> {
             var executor = worker;
             worker = null;
             downloader = null;
@@ -77,7 +74,7 @@ public final class DownloadCommands {
             if (tools != null) tools.close();
             settingUp.set(false);
         });
-        CommandRegistrationCallback.EVENT.register((dispatcher, access, environment) -> registerCommands(dispatcher));
+        MysixPlatform.onRegisterCommands(DownloadCommands::registerCommands);
     }
 
     static void registerCommands(com.mojang.brigadier.CommandDispatcher<net.minecraft.commands.CommandSourceStack> dispatcher) {
@@ -153,14 +150,13 @@ public final class DownloadCommands {
             executor.execute(() -> {
                 ManagedTools candidate = null;
                 try {
-                    var loader = FabricLoader.getInstance();
-                    var configPath = loader.getConfigDir().resolve("mysix-download.json");
+                    var configPath = MysixPlatform.configDirectory().resolve("mysix-download.json");
                     var config = DownloadConfig.load(configPath);
                     candidate = managed;
-                    if (candidate == null) candidate = new ManagedTools(loader.getGameDir());
+                    if (candidate == null) candidate = new ManagedTools(MysixPlatform.gameDirectory());
                     candidate.install(message -> feedback(source, "Mysix setup: " + message));
                     candidate.ensureProvider();
-                    var next = candidate.downloader(config, loader.getGameDir().resolve("mysix-cache/downloads"));
+                    var next = candidate.downloader(config, MysixPlatform.gameDirectory().resolve("mysix-cache/downloads"));
                     if (worker != executor || executor.isShutdown()) throw new java.io.InterruptedIOException("Server stopped during setup");
                     new DownloadConfig(config.ytDlpCommand(), config.timeoutSeconds(), config.maxFileMiB(), true).save(configPath);
                     var previous = managed; managed = candidate; candidate = null;

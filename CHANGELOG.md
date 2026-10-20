@@ -1,5 +1,23 @@
 # Unreleased
 
+- Added a pinned optional Sound Physics Remastered Forge development profile,
+  combined playlist/server checks, and a windowless client check validating both
+  mods' audio mixins and positional mono Ogg decoding. Documented the upstream
+  music-disc processing setting; no extra audio hook or forced config change.
+
+- Added optional Forge compatibility with Jukebox Playlists 1.0.1: external CDs
+  in chest queues, actual-duration transitions, loading holds, repeats, failure
+  ejection and recording-data preservation. Added six headless integration tests
+  using the pinned upstream binary and CI checks with and without it installed.
+
+- Added a separate experimental Forge build for Minecraft 26.3, with the shared
+  CDs, recipes, anvil song selection, downloader/setup commands, cache, bounded
+  audio transfer, and client Ogg decoding. Fabric remains available separately.
+- Added Forge registration, event, command, network and audio-stream bindings,
+  shared JUnit coverage, headless Forge GameTests and a Forge CI workflow.
+- Existing optional integrations stay Fabric-only until matching Forge releases
+  are available and verified; NeoForge builds are not Forge-compatible.
+
 - Changed the repository license and mod metadata to MIT. Previously published
   releases through 0.6.0 remain available under CC0-1.0; their permissions are
   not revoked. Third-party licenses and rights to music are unaffected.
