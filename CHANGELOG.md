@@ -1,5 +1,8 @@
 # Unreleased
 
+- Forge now has an independent `forge_version` and `forge-v*` release workflow.
+  Initial Forge release: `forge-v0.6.0`; Fabric's `v0.6.0` is unchanged.
+
 - Added a pinned optional Sound Physics Remastered Forge development profile,
   combined playlist/server checks, and a windowless client check validating both
   mods' audio mixins and positional mono Ogg decoding. Documented the upstream

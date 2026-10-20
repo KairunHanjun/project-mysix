@@ -7,7 +7,7 @@ plugins {
 
 def sharedProperties = new Properties()
 file('../gradle.properties').withInputStream { sharedProperties.load(it) }
-version = sharedProperties.getProperty('version') + '-forge-dev'
+version = providers.gradleProperty('forge_version').get()
 group = sharedProperties.getProperty('group')
 base.archivesName = 'project-mysix-forge'
 java {

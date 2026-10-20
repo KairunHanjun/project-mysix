@@ -1,14 +1,16 @@
-# Forge development build
+# Forge build
 
 Mysix has a separate experimental port for **Minecraft 26.3**, **Minecraft Forge 66.0.13**, and **Java 25**. Forge and NeoForge are separate loaders; this build is for Forge.
 
 ## Install and use
 
-Use the `project-mysix-forge-*-forge-dev.jar` on the Forge server and every Forge client. Do not install the Fabric JAR or Fabric API in that instance. The `-sources.jar` is for developers.
+Use the regular `project-mysix-forge-<version>.jar` on the Forge server and every Forge client. Do not install the Fabric JAR or Fabric API in that instance. The `-sources.jar` is for developers.
 
 The Forge port includes all sixteen CDs, recipes, vanilla song selection, YouTube search/direct links, recording data, cache reuse, failure ejection, multiplayer audio delivery, and automatic tool installation. Run `/mysix setup` once, then craft and rename a CD as described in the [player guide](../README.md). In the server console, omit the command's slash. Setup permissions and [downloader configuration](SETUP.md) are the same as Fabric.
 
-The Forge build shares the core Java sources and resources with Fabric. The `forge/` directory provides loader-specific registration, events, networking, client commands and audio hooks. Build output is in `forge/build/libs/`; GitHub's **Forge build and tests** workflow also uploads the development JARs as artifacts. This does not replace the published Fabric release.
+The Forge build shares the core Java sources and resources with Fabric. The `forge/` directory provides loader-specific registration, events, networking, client commands and audio hooks. Build output is in `forge/build/libs/`; GitHub's **Forge build and release** workflow uploads JARs and checksums, and publishes a separate release for `forge-v*` tags after all Forge checks pass.
+
+Forge's version is stored in `forge/gradle.properties` as `forge_version`. Its initial `0.6.0` matches Fabric's feature baseline. Tags such as `forge-v0.6.0` and `forge-v0.6.1` belong to Forge; existing `v*` tags belong to Fabric. Bug-fix versions advance independently, so fixing Forge does not bump or replace Fabric's release. A future Forge feature baseline can align with the equivalent Fabric version deliberately.
 
 ## Build and test
 

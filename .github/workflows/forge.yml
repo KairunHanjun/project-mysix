@@ -1,8 +1,9 @@
-name: Forge build and tests
+name: Forge build and release
 
 on:
   push:
     branches: [main]
+    tags: ['forge-v*']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -21,6 +22,17 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: gradle
+      - name: Read and validate Forge release version
+        id: version
+        shell: bash
+        run: |
+          version=$(sed -n 's/^forge_version=//p' forge/gradle.properties | tr -d '\r')
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF" == refs/tags/forge-v* ]]; then
+            test "$GITHUB_REF_NAME" = "forge-v$version"
+            test -f "docs/releases/forge-$version.md"
+          fi
       - name: Build, JUnit and headless Forge GameTests
         run: bash gradlew -p forge --no-daemon --max-workers=2 build runGameTestServer
       - name: Verify Mysix gameplay tests actually ran
@@ -51,11 +63,20 @@ jobs:
           from pathlib import Path
           assert Path('forge/build/sound-physics-check.txt').read_text().startswith('PASS:')
           PY
+      - name: Calculate Forge checksums
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cd forge/build/libs
+          sha256sum "project-mysix-forge-$VERSION.jar" "project-mysix-forge-$VERSION-sources.jar" > SHA256SUMS
       - name: Upload Forge JARs
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: project-mysix-forge
-          path: forge/build/libs/*.jar
+          path: |
+            forge/build/libs/project-mysix-forge-${{ steps.version.outputs.version }}.jar
+            forge/build/libs/project-mysix-forge-${{ steps.version.outputs.version }}-sources.jar
+            forge/build/libs/SHA256SUMS
           if-no-files-found: error
       - name: Upload test reports
         if: always()
@@ -68,3 +89,24 @@ jobs:
             forge/run/logs/latest.log
             forge/run/**/*.xml
           if-no-files-found: ignore
+  release:
+    if: startsWith(github.ref, 'refs/tags/forge-v')
+    needs: forge
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: project-mysix-forge
+          path: release
+      - name: Publish Forge release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#forge-v}"
+          gh release create "$GITHUB_REF_NAME" release/*.jar release/SHA256SUMS \
+            --verify-tag --prerelease --latest=false --title "Project Mysix Forge $version" \
+            --notes-file "docs/releases/forge-$version.md"

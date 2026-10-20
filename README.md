@@ -2,7 +2,7 @@
 
 **Craft a CD, rename it, and play your music in Minecraft.**
 
-Mysix brings vanilla music, YouTube song search, and multiplayer jukebox playback to Minecraft Java Edition. Fabric releases are available, with a separate Forge port in testing.
+Mysix brings vanilla music, YouTube song search, and multiplayer jukebox playback to Minecraft Java Edition, with separate Fabric and Forge builds.
 
 [Download](https://github.com/KairunHanjun/project-mysix/releases) · [Report a bug](https://github.com/KairunHanjun/project-mysix/issues) · [Changelog](CHANGELOG.md)
 
